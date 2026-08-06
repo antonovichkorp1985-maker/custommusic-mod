@@ -1,0 +1,9 @@
+/build/
+/.gradle/
+/out/
+.run/
+logs/
+custommusic/
+.vscode/
+.idea/
+*.log
