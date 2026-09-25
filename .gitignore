@@ -3,7 +3,7 @@
 /out/
 .run/
 logs/
-custommusic/
+/custommusic/
 .vscode/
 .idea/
 *.log

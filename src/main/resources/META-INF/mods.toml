@@ -1,0 +1,34 @@
+modLoader="javafml"
+loaderVersion="[43,)"
+license="MIT"
+issueTrackerURL="https://github.com/example/custommusic/issues"
+
+[[mods]]
+modId="custommusic"
+version="${mod_version}"
+displayName="Custom Music Player"
+updateJSONURL="https://example.com/update.json"
+displayURL="https://github.com/example/custommusic"
+logoFile="logo.png"
+credits="Obninsk modding team"
+authors="Obninsk"
+description='''
+Плеер для своей музыки в Minecraft.
+Поддерживает MP3, WAV, FLAC, OGG, DSF (опционально).
+Интерфейс с разделением по исполнителям, альбомам, режимами воспроизведения.
+Папка с музыкой: ./custommusic/
+'''
+
+[[dependencies.custommusic]]
+modId="forge"
+mandatory=true
+versionRange="[43.4.0,)"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.custommusic]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.19.2,1.20)"
+ordering="NONE"
+side="CLIENT"
