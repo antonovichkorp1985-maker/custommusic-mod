@@ -1,6 +1,6 @@
 package com.obninsk.custommusic.gui;
 
-import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.gui.GuiGraphics;
 import com.obninsk.custommusic.music.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
@@ -73,7 +73,7 @@ public class MusicPlayerScreen extends Screen implements AudioPlayerManager.Play
         int topBtnW = 60;
         int topBtnH = 16;
         int topY = MARGIN;
-        addRenderableWidget(new Button(this.width - (topBtnW*2 + MARGIN + 4) - topBtnW - 4, topY, topBtnW, topBtnH,
+        addRenderableWidget(GuiWidgets.button(this.width - (topBtnW*2 + MARGIN + 4) - topBtnW - 4, topY, topBtnW, topBtnH,
                 Component.literal("Обновить"), b -> {
             setStatus("Сканирование...");
             library.scanAsync().thenRun(() -> {
@@ -83,7 +83,7 @@ public class MusicPlayerScreen extends Screen implements AudioPlayerManager.Play
                 });
             });
         }));
-        addRenderableWidget(new Button(this.width - (topBtnW + MARGIN + 2), topY, topBtnW, topBtnH,
+        addRenderableWidget(GuiWidgets.button(this.width - (topBtnW + MARGIN + 2), topY, topBtnW, topBtnH,
                 Component.literal("Папка"), b -> {
             try {
                 net.minecraft.Util.getPlatform().openUri(library.getMusicFolder().toURI());
@@ -93,18 +93,18 @@ public class MusicPlayerScreen extends Screen implements AudioPlayerManager.Play
         }));
 
         int volX = searchW + MARGIN + 8;
-        addRenderableWidget(new Button(volX, topY, 28, topBtnH, Component.literal("-"), b -> {
+        addRenderableWidget(GuiWidgets.button(volX, topY, 28, topBtnH, Component.literal("-"), b -> {
             float v = playerManager.getVolume() - 0.1f;
             playerManager.setVolume(v);
             setStatus(String.format("Громкость: %d%%", (int)(playerManager.getVolume()*100)));
         }));
-        addRenderableWidget(new Button(volX + 30, topY, 28, topBtnH, Component.literal("+"), b -> {
+        addRenderableWidget(GuiWidgets.button(volX + 30, topY, 28, topBtnH, Component.literal("+"), b -> {
             float v = playerManager.getVolume() + 0.1f;
             playerManager.setVolume(v);
             setStatus(String.format("Громкость: %d%%", (int)(playerManager.getVolume()*100)));
         }));
         // Кнопка переключения в режим папок
-        addRenderableWidget(new Button(volX + 62, topY, 50, topBtnH, Component.literal("Папки"), b -> {
+        addRenderableWidget(GuiWidgets.button(volX + 62, topY, 50, topBtnH, Component.literal("Папки"), b -> {
             Minecraft.getInstance().setScreen(new FolderBrowserScreen());
         }));
 
@@ -115,12 +115,12 @@ public class MusicPlayerScreen extends Screen implements AudioPlayerManager.Play
         int startX = (this.width - totalW)/2;
         if (startX < MARGIN) startX = MARGIN;
 
-        addRenderableWidget(new Button(startX, bottomY, btnW, btnH, Component.literal("<< Назад"), b -> {
+        addRenderableWidget(GuiWidgets.button(startX, bottomY, btnW, btnH, Component.literal("<< Назад"), b -> {
             Track prev = playlistManager.previous();
             if (prev != null) playerManager.play(prev);
             else setStatus("Нет предыдущего");
         }));
-        playPauseButton = addRenderableWidget(new Button(startX + btnW + gap, bottomY, btnW, btnH,
+        playPauseButton = addRenderableWidget(GuiWidgets.button(startX + btnW + gap, bottomY, btnW, btnH,
                 Component.literal(playerManager.isPlaying() && !playerManager.isPaused() ? "Пауза" : "Играть"), b -> {
             if (playerManager.isPlaying()) {
                 playerManager.togglePause();
@@ -132,12 +132,12 @@ public class MusicPlayerScreen extends Screen implements AudioPlayerManager.Play
                 else setStatus("Нет треков");
             }
         }));
-        addRenderableWidget(new Button(startX + (btnW+gap)*2, bottomY, btnW, btnH, Component.literal("Далее >>"), b -> {
+        addRenderableWidget(GuiWidgets.button(startX + (btnW+gap)*2, bottomY, btnW, btnH, Component.literal("Далее >>"), b -> {
             Track next = playlistManager.next();
             if (next != null) playerManager.play(next);
             else setStatus("Конец очереди");
         }));
-        Button modeBtn = addRenderableWidget(new Button(startX + (btnW+gap)*3, bottomY, btnW, btnH,
+        Button modeBtn = addRenderableWidget(GuiWidgets.button(startX + (btnW+gap)*3, bottomY, btnW, btnH,
                 Component.literal(playlistManager.getPlayMode().getDisplayName()), b -> {
             PlayMode nextMode = playlistManager.getPlayMode().next();
             playlistManager.setPlayMode(nextMode);
@@ -216,12 +216,12 @@ public class MusicPlayerScreen extends Screen implements AudioPlayerManager.Play
     }
 
     @Override
-    public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTicks) {
+    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTicks) {
         recalcLayout();
-        this.renderBackground(poseStack);
-        super.render(poseStack, mouseX, mouseY, partialTicks);
+        this.renderBackground(g, mouseX, mouseY, partialTicks);
+        super.render(g, mouseX, mouseY, partialTicks);
         String title = "Custom Music Player";
-        drawCenteredString(poseStack, font, title, width/2, MARGIN + 20, 0xFFFFFF);
+        g.drawCenteredString(font, title, width/2, MARGIN + 20, 0xFFFFFF);
         Track now = playerManager.getNowPlaying();
         String nowText;
         if (now != null) {
@@ -234,24 +234,24 @@ public class MusicPlayerScreen extends Screen implements AudioPlayerManager.Play
         if (font.width(nowText) > maxNowWidth) {
             nowText = font.plainSubstrByWidth(nowText, maxNowWidth - 10) + "...";
         }
-        drawString(poseStack, font, nowText, MARGIN, MARGIN + 36, 0x55FF55);
+        g.drawString(font, nowText, MARGIN, MARGIN + 36, 0x55FF55);
         if (!statusMessage.isEmpty() && System.currentTimeMillis() - statusMessageTime < 4000) {
-            drawString(poseStack, font, statusMessage, MARGIN, height - 12, 0xFFFF55);
+            g.drawString(font, statusMessage, MARGIN, height - 12, 0xFFFF55);
         }
         String volText = String.format("Громк. %d%%", (int)(playerManager.getVolume()*100));
-        drawString(poseStack, font, volText, MARGIN + 220, MARGIN + 4, 0xAAAAAA);
-        fill(poseStack, leftX -1, colTop -1, leftX + colW -1, colBottom, 0xAA000000);
-        fill(poseStack, midX -1, colTop -1, midX + colW -1, colBottom, 0xAA000000);
-        fill(poseStack, rightX -1, colTop -1, Math.min(rightX + colW -1, this.width - MARGIN), colBottom, 0xAA000000);
-        drawString(poseStack, font, "Исполнители (" + (artistDisplay.size()-1) + ")", leftX +2, colTop - HEADER_H +2, 0xAAAAFF);
-        drawString(poseStack, font, "Альбомы (" + (albumDisplay.size()-1) + ")", midX +2, colTop - HEADER_H +2, 0xFFAAAA);
-        drawString(poseStack, font, "Треки (" + trackDisplay.size() + ")", rightX +2, colTop - HEADER_H +2, 0xAAFFAA);
-        renderArtistList(poseStack, leftX, colTop, colW, colHeight, mouseX, mouseY);
-        renderAlbumList(poseStack, midX, colTop, colW, colHeight, mouseX, mouseY);
-        renderTrackList(poseStack, rightX, colTop, colW, colHeight, mouseX, mouseY);
+        g.drawString(font, volText, MARGIN + 220, MARGIN + 4, 0xAAAAAA);
+        g.fill(leftX -1, colTop -1, leftX + colW -1, colBottom, 0xAA000000);
+        g.fill(midX -1, colTop -1, midX + colW -1, colBottom, 0xAA000000);
+        g.fill(rightX -1, colTop -1, Math.min(rightX + colW -1, this.width - MARGIN), colBottom, 0xAA000000);
+        g.drawString(font, "Исполнители (" + (artistDisplay.size()-1) + ")", leftX +2, colTop - HEADER_H +2, 0xAAAAFF);
+        g.drawString(font, "Альбомы (" + (albumDisplay.size()-1) + ")", midX +2, colTop - HEADER_H +2, 0xFFAAAA);
+        g.drawString(font, "Треки (" + trackDisplay.size() + ")", rightX +2, colTop - HEADER_H +2, 0xAAFFAA);
+        renderArtistList(g, leftX, colTop, colW, colHeight, mouseX, mouseY);
+        renderAlbumList(g, midX, colTop, colW, colHeight, mouseX, mouseY);
+        renderTrackList(g, rightX, colTop, colW, colHeight, mouseX, mouseY);
     }
 
-    private void renderArtistList(PoseStack ps, int x, int y, int w, int h, int mx, int my) {
+    private void renderArtistList(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
         int visible = Math.max(1, h / ROW_HEIGHT);
         artistScroll = Mth.clamp(artistScroll, 0, Math.max(0, artistDisplay.size() - visible));
         for (int i=0;i<visible;i++) {
@@ -263,15 +263,15 @@ public class MusicPlayerScreen extends Screen implements AudioPlayerManager.Play
             boolean hovered = mx >= x && mx < x + w && my >= rowY && my < rowY + ROW_HEIGHT;
             boolean selected = (idx==0 && selectedArtist==null) || (selectedArtist!=null && selectedArtist.equals(name));
             int bg = selected ? 0xFF333388 : hovered ? 0xFF333333 : 0x00000000;
-            if (bg!=0) fill(ps, x, rowY, x + w -2, rowY + ROW_HEIGHT -1, bg);
+            if (bg!=0) g.fill(x, rowY, x + w -2, rowY + ROW_HEIGHT -1, bg);
             int col = selected ? 0xFFFFFF : hovered ? 0xFFFFAA : 0xCCCCCC;
             String disp = name;
             if (font.width(disp) > w - 6) disp = font.plainSubstrByWidth(disp, w - 12) + "..";
-            drawString(ps, font, disp, x+2, rowY+2, col);
+            g.drawString(font, disp, x+2, rowY+2, col);
         }
     }
 
-    private void renderAlbumList(PoseStack ps, int x, int y, int w, int h, int mx, int my) {
+    private void renderAlbumList(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
         int visible = Math.max(1, h / ROW_HEIGHT);
         albumScroll = Mth.clamp(albumScroll, 0, Math.max(0, albumDisplay.size() - visible));
         for (int i=0;i<visible;i++) {
@@ -283,15 +283,15 @@ public class MusicPlayerScreen extends Screen implements AudioPlayerManager.Play
             boolean hovered = mx >= x && mx < x + w && my >= rowY && my < rowY + ROW_HEIGHT;
             boolean selected = (idx==0 && selectedAlbum==null) || (selectedAlbum!=null && selectedAlbum.equals(name));
             int bg = selected ? 0xFF883333 : hovered ? 0xFF333333 : 0x00000000;
-            if (bg!=0) fill(ps, x, rowY, x + w -2, rowY + ROW_HEIGHT -1, bg);
+            if (bg!=0) g.fill(x, rowY, x + w -2, rowY + ROW_HEIGHT -1, bg);
             int col = selected ? 0xFFFFFF : hovered ? 0xFFFFAA : 0xCCCCCC;
             String disp = name;
             if (font.width(disp) > w - 6) disp = font.plainSubstrByWidth(disp, w - 12) + "..";
-            drawString(ps, font, disp, x+2, rowY+2, col);
+            g.drawString(font, disp, x+2, rowY+2, col);
         }
     }
 
-    private void renderTrackList(PoseStack ps, int x, int y, int w, int h, int mx, int my) {
+    private void renderTrackList(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
         int visible = Math.max(1, h / ROW_HEIGHT);
         int maxW = this.width - x - MARGIN - 2;
         if (maxW < w) w = maxW;
@@ -306,11 +306,11 @@ public class MusicPlayerScreen extends Screen implements AudioPlayerManager.Play
             boolean hovered = mx >= x && mx < x + w && my >= rowY && my < rowY + ROW_HEIGHT;
             boolean isPlaying = current != null && current.equals(t);
             int bg = isPlaying ? 0xFF336633 : hovered ? 0xFF333333 : (i%2==0?0xFF222222:0x00000000);
-            fill(ps, x, rowY, x + w -2, rowY + ROW_HEIGHT -1, bg);
+            g.fill(x, rowY, x + w -2, rowY + ROW_HEIGHT -1, bg);
             int col = isPlaying ? 0x55FF55 : hovered ? 0xFFFFAA : 0xEEEEEE;
             String line = String.format("%s - %s [%s]", t.getArtist(), t.getTitle(), t.getFormat().getExt().toUpperCase());
             if (font.width(line) > w - 6) line = font.plainSubstrByWidth(line, w - 12) + "..";
-            drawString(ps, font, line, x+2, rowY+2, col);
+            g.drawString(font, line, x+2, rowY+2, col);
         }
     }
 
@@ -352,8 +352,8 @@ public class MusicPlayerScreen extends Screen implements AudioPlayerManager.Play
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (mouseY < colTop || mouseY >= colBottom) return super.mouseScrolled(mouseX, mouseY, delta);
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double delta) {
+        if (mouseY < colTop || mouseY >= colBottom) return super.mouseScrolled(mouseX, mouseY, scrollX, delta);
         if (mouseX >= leftX && mouseX < leftX + colW) {
             artistScroll -= (int)delta;
             return true;
@@ -366,7 +366,7 @@ public class MusicPlayerScreen extends Screen implements AudioPlayerManager.Play
             trackScroll -= (int)delta;
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, delta);
     }
 
     private void updatePlayPauseButton() {

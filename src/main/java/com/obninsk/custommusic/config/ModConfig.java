@@ -1,27 +1,33 @@
 package com.obninsk.custommusic.config;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
+/**
+ * Config for CustomMusic (config/custommusic-client.toml).
+ *
+ * <p>1.19.2 Forge used {@code ForgeConfigSpec}; NeoForge renamed it to
+ * {@code net.neoforged.neoforge.common.ModConfigSpec} - the builder API is the same.
+ */
 public class ModConfig {
-    public static final ForgeConfigSpec CLIENT_SPEC;
+    public static final ModConfigSpec CLIENT_SPEC;
     public static final Client CLIENT;
 
     static {
-        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
         CLIENT = new Client(builder);
         CLIENT_SPEC = builder.build();
     }
 
     public static class Client {
-        public final ForgeConfigSpec.ConfigValue<String> musicFolder;
-        public final ForgeConfigSpec.DoubleValue defaultVolume;
-        public final ForgeConfigSpec.BooleanValue pauseVanillaMusic;
-        public final ForgeConfigSpec.BooleanValue autoScanOnStartup;
-        public final ForgeConfigSpec.ConfigValue<String> defaultPlayMode;
-        public final ForgeConfigSpec.BooleanValue enableDSF;
-        public final ForgeConfigSpec.ConfigValue<String> defaultViewMode;
+        public final ModConfigSpec.ConfigValue<String> musicFolder;
+        public final ModConfigSpec.DoubleValue defaultVolume;
+        public final ModConfigSpec.BooleanValue pauseVanillaMusic;
+        public final ModConfigSpec.BooleanValue autoScanOnStartup;
+        public final ModConfigSpec.ConfigValue<String> defaultPlayMode;
+        public final ModConfigSpec.BooleanValue enableDSF;
+        public final ModConfigSpec.ConfigValue<String> defaultViewMode;
 
-        public Client(ForgeConfigSpec.Builder builder) {
+        public Client(ModConfigSpec.Builder builder) {
             builder.push("general");
             musicFolder = builder
                     .comment("Папка с музыкой относительно директории игры. Если пусто - используется ./custommusic/")
@@ -45,6 +51,31 @@ public class ModConfig {
                     .comment("Вид по умолчанию при открытии по M: FOLDERS или ARTISTS")
                     .define("defaultViewMode", "FOLDERS");
             builder.pop();
+        }
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Безопасные геттеры.
+    //
+    // CLIENT-конфиг загружается только на клиенте: на выделенном сервере
+    // ConfigValue.get() бросает IllegalStateException ("Cannot get config value before
+    // config is loaded"). Раньше это роняло загрузку мода при обращении к конфигу
+    // из FMLCommonSetupEvent. Теперь везде используются эти геттеры с дефолтами.
+    // ---------------------------------------------------------------------------------
+    public static String musicFolder()        { return safe(CLIENT.musicFolder, "custommusic"); }
+    public static double defaultVolume()      { return safe(CLIENT.defaultVolume, 0.7d); }
+    public static boolean pauseVanillaMusic() { return safe(CLIENT.pauseVanillaMusic, true); }
+    public static boolean autoScanOnStartup() { return safe(CLIENT.autoScanOnStartup, true); }
+    public static String defaultPlayMode()    { return safe(CLIENT.defaultPlayMode, "SEQUENTIAL"); }
+    public static boolean enableDSF()         { return safe(CLIENT.enableDSF, false); }
+    public static String defaultViewMode()    { return safe(CLIENT.defaultViewMode, "FOLDERS"); }
+
+    private static <T> T safe(ModConfigSpec.ConfigValue<T> value, T fallback) {
+        try {
+            T v = value.get();
+            return v != null ? v : fallback;
+        } catch (Throwable t) {
+            return fallback;
         }
     }
 }

@@ -60,7 +60,7 @@ public class AudioPlayerManager {
     private PlaybackListener listener;
 
     private AudioPlayerManager() {
-        volume = ModConfig.CLIENT.defaultVolume.get().floatValue();
+        volume = (float) ModConfig.defaultVolume();
     }
 
     public static AudioPlayerManager getInstance() { return INSTANCE; }
@@ -359,7 +359,6 @@ public class AudioPlayerManager {
         if (in.getFormat().matches(target)) return in;
         return AudioSystem.getAudioInputStream(target, in);
     }
-
     private List<AudioFormat> buildTargetCandidates(AudioFormat baseFormat) {
         int channels = baseFormat.getChannels() > 0 ? baseFormat.getChannels() : 2;
         int sourceBits = baseFormat.getSampleSizeInBits() > 0 ? baseFormat.getSampleSizeInBits() : 16;

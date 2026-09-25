@@ -1,9 +1,28 @@
-/build/
-/.gradle/
-/out/
-.run/
-logs/
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# idea
+out
+*.ipr
+*.iws
+*.iml
+.idea
+
+# gradle
+build
+.gradle
+
+# other
+eclipse
+run
+runs
+run-data
+
+repo
+# runtime music folder
 /custommusic/
-.vscode/
-.idea/
-*.log
