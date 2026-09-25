@@ -1,52 +1,39 @@
 package com.obninsk.custommusic;
 
-import com.obninsk.custommusic.client.ClientCommands;
-import com.obninsk.custommusic.client.ClientEvents;
 import com.obninsk.custommusic.config.ModConfig;
-import com.obninsk.custommusic.music.MusicLibraryManager;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig.Type;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-@Mod("custommusic")
+/**
+ * CustomMusic for Minecraft 1.21.1 / NeoForge.
+ *
+ * <p>The mod is client-side only: every client specific listener lives in a class
+ * annotated with {@code @EventBusSubscriber(value = Dist.CLIENT)}, so nothing client
+ * related is touched from this constructor (the mod can also be present on a
+ * dedicated server without crashing it).
+ */
+@Mod(CustomMusicMod.MODID)
 public class CustomMusicMod {
     public static final String MODID = "custommusic";
     public static final Logger LOGGER = LogManager.getLogger("CustomMusic");
 
-    public CustomMusicMod() {
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
-
+    // FML injects these parameters automatically.
+    public CustomMusicMod(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::setup);
-        modEventBus.addListener(this::clientSetup);
-        modEventBus.addListener(ClientEvents::onRegisterKeyMappings);
 
-        ModLoadingContext.get().registerConfig(Type.CLIENT, ModConfig.CLIENT_SPEC);
+        // NeoForge config (creates config/custommusic-client.toml)
+        modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.CLIENT, ModConfig.CLIENT_SPEC);
 
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-            MinecraftForge.EVENT_BUS.register(ClientEvents.ForgeEvents.class);
-            MinecraftForge.EVENT_BUS.register(ClientCommands.class);
-        });
-
-        LOGGER.info("CustomMusic mod initialized");
+        LOGGER.info("CustomMusic mod initialized (NeoForge / Minecraft 1.21.1)");
     }
 
     private void setup(final FMLCommonSetupEvent event) {
         LOGGER.info("CustomMusic common setup");
-        event.enqueueWork(() -> {
-            MusicLibraryManager.getInstance().init();
-        });
-    }
-
-    private void clientSetup(final FMLClientSetupEvent event) {
-        LOGGER.info("CustomMusic client setup");
+        // Библиотеку сканируем только на клиенте (см. ClientEvents#onClientSetup):
+        // на выделенном сервере CLIENT-конфиг не загружен, да и музыка там не нужна.
     }
 }

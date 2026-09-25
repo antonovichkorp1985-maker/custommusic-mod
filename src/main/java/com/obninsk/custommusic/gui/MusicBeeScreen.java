@@ -1,6 +1,6 @@
 package com.obninsk.custommusic.gui;
 
-import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.gui.GuiGraphics;
 import com.obninsk.custommusic.music.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
@@ -103,7 +103,7 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
         // Force sequential order on open so the queue matches the displayed list by default
         playlistManager.setPlayMode(PlayMode.SEQUENTIAL);
 
-        String cfgMode = com.obninsk.custommusic.config.ModConfig.CLIENT.defaultViewMode.get();
+        String cfgMode = com.obninsk.custommusic.config.ModConfig.defaultViewMode();
         try {
             viewMode = ViewMode.valueOf(cfgMode.toUpperCase(Locale.ROOT));
         } catch (Exception ignored) {
@@ -135,7 +135,7 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
         addRenderableWidget(searchBox);
 
         int clearX = MARGIN + searchBox.getWidth() + 2;
-        addRenderableWidget(new Button(clearX, topY, 44, 16, Component.literal("Сброс"), b -> {
+        addRenderableWidget(GuiWidgets.button(clearX, topY, 44, 16, Component.literal("Сброс"), b -> {
             searchBox.setValue("");
             refreshDisplayedTracks();
         }));
@@ -143,34 +143,34 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
         int btnH = 16;
         int btnY = topY;
         int x = leftPanelW + MARGIN;
-        addRenderableWidget(new Button(x, btnY, 50, btnH, Component.literal("Папки"), b -> setViewMode(ViewMode.FOLDERS)));
+        addRenderableWidget(GuiWidgets.button(x, btnY, 50, btnH, Component.literal("Папки"), b -> setViewMode(ViewMode.FOLDERS)));
         x += 54;
-        addRenderableWidget(new Button(x, btnY, 60, btnH, Component.literal("Артисты"), b -> setViewMode(ViewMode.ARTISTS)));
+        addRenderableWidget(GuiWidgets.button(x, btnY, 60, btnH, Component.literal("Артисты"), b -> setViewMode(ViewMode.ARTISTS)));
         x += 64;
-        addRenderableWidget(new Button(x, btnY, 60, btnH, Component.literal("Альбомы"), b -> setViewMode(ViewMode.ALBUMS)));
+        addRenderableWidget(GuiWidgets.button(x, btnY, 60, btnH, Component.literal("Альбомы"), b -> setViewMode(ViewMode.ALBUMS)));
         x += 64;
-        addRenderableWidget(new Button(x, btnY, 50, btnH, Component.literal("Все"), b -> setViewMode(ViewMode.ALL)));
+        addRenderableWidget(GuiWidgets.button(x, btnY, 50, btnH, Component.literal("Все"), b -> setViewMode(ViewMode.ALL)));
         x += 54 + 10;
-        addRenderableWidget(new Button(x, btnY, 60, btnH, Component.literal("Обновить"), b -> rescan()));
+        addRenderableWidget(GuiWidgets.button(x, btnY, 60, btnH, Component.literal("Обновить"), b -> rescan()));
         x += 64;
-        addRenderableWidget(new Button(x, btnY, 60, btnH, Component.literal("Папка"), b -> openMusicFolder()));
+        addRenderableWidget(GuiWidgets.button(x, btnY, 60, btnH, Component.literal("Папка"), b -> openMusicFolder()));
 
         // Bottom bar widgets
         int by = this.height - BOTTOM_BAR_H + (BOTTOM_BAR_H - 20) / 2;
         int cx = MARGIN;
-        addRenderableWidget(new Button(cx, by, 34, 20, Component.literal("|<<"), b -> prevTrack()));
+        addRenderableWidget(GuiWidgets.button(cx, by, 34, 20, Component.literal("|<<"), b -> prevTrack()));
         cx += 38;
-        playPauseButton = addRenderableWidget(new Button(cx, by, 50, 20,
+        playPauseButton = addRenderableWidget(GuiWidgets.button(cx, by, 50, 20,
                 Component.literal(playerManager.isPlaying() && !playerManager.isPaused() ? "||" : ">"), b -> togglePlayPause()));
         cx += 54;
-        addRenderableWidget(new Button(cx, by, 34, 20, Component.literal(">>|"), b -> nextTrack()));
+        addRenderableWidget(GuiWidgets.button(cx, by, 34, 20, Component.literal(">>|"), b -> nextTrack()));
         cx += 42;
-        modeButton = addRenderableWidget(new Button(cx, by, 70, 20,
+        modeButton = addRenderableWidget(GuiWidgets.button(cx, by, 70, 20,
                 Component.literal(playlistManager.getPlayMode().getDisplayName()), b -> cycleMode()));
         cx += 78;
-        addRenderableWidget(new Button(cx, by, 28, 20, Component.literal("-") , b -> changeVolume(-0.1f)));
+        addRenderableWidget(GuiWidgets.button(cx, by, 28, 20, Component.literal("-") , b -> changeVolume(-0.1f)));
         cx += 32;
-        addRenderableWidget(new Button(cx, by, 28, 20, Component.literal("+") , b -> changeVolume(0.1f)));
+        addRenderableWidget(GuiWidgets.button(cx, by, 28, 20, Component.literal("+") , b -> changeVolume(0.1f)));
 
         setInitialFocus(searchBox);
     }
@@ -460,53 +460,53 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
     // ==================== Rendering ====================
 
     @Override
-    public void render(PoseStack ps, int mx, int my, float partialTicks) {
+    public void render(GuiGraphics g, int mx, int my, float partialTicks) {
         recalcLayout();
-        renderBackground(ps);
+        renderBackground(g, mx, my, partialTicks);
 
         // Draw backgrounds first, then widgets on top
-        renderTopBar(ps, mx, my);
-        renderBottomBar(ps, mx, my);
-        drawPanel(ps, MARGIN, TOP_BAR_H, leftPanelW, this.height - TOP_BAR_H - BOTTOM_BAR_H, C_PANEL);
-        drawPanel(ps, centerX, centerY, centerW, centerH, C_PANEL);
-        drawPanel(ps, this.width - MARGIN - rightPanelW, centerY, rightPanelW, centerH, C_PANEL);
+        renderTopBar(g, mx, my);
+        renderBottomBar(g, mx, my);
+        drawPanel(g, MARGIN, TOP_BAR_H, leftPanelW, this.height - TOP_BAR_H - BOTTOM_BAR_H, C_PANEL);
+        drawPanel(g, centerX, centerY, centerW, centerH, C_PANEL);
+        drawPanel(g, this.width - MARGIN - rightPanelW, centerY, rightPanelW, centerH, C_PANEL);
 
-        super.render(ps, mx, my, partialTicks);
+        super.render(g, mx, my, partialTicks);
 
-        renderTreePanel(ps, mx, my);
-        renderCenterHeader(ps);
-        renderTable(ps, mx, my);
-        renderRightPanel(ps, mx, my);
+        renderTreePanel(g, mx, my);
+        renderCenterHeader(g);
+        renderTable(g, mx, my);
+        renderRightPanel(g, mx, my);
 
         if (!statusMessage.isEmpty() && System.currentTimeMillis() - statusMessageTime < 4000) {
-            drawString(ps, font, statusMessage, MARGIN, this.height - BOTTOM_BAR_H - 12, C_YELLOW);
+            g.drawString(font, statusMessage, MARGIN, this.height - BOTTOM_BAR_H - 12, C_YELLOW);
         }
     }
 
-    private void drawPanel(PoseStack ps, int x, int y, int w, int h, int color) {
-        fill(ps, x, y, x + w, y + h, color);
-        fill(ps, x, y, x + w, y + 1, C_BORDER);
-        fill(ps, x, y + h - 1, x + w, y + h, C_BORDER);
-        fill(ps, x, y, x + 1, y + h, C_BORDER);
-        fill(ps, x + w - 1, y, x + w, y + h, C_BORDER);
+    private void drawPanel(GuiGraphics g, int x, int y, int w, int h, int color) {
+        g.fill(x, y, x + w, y + h, color);
+        g.fill(x, y, x + w, y + 1, C_BORDER);
+        g.fill(x, y + h - 1, x + w, y + h, C_BORDER);
+        g.fill(x, y, x + 1, y + h, C_BORDER);
+        g.fill(x + w - 1, y, x + w, y + h, C_BORDER);
     }
 
-    private void renderTopBar(PoseStack ps, int mx, int my) {
-        fill(ps, 0, 0, this.width, TOP_BAR_H, C_HEADER);
-        fill(ps, 0, TOP_BAR_H - 1, this.width, TOP_BAR_H, C_BORDER);
+    private void renderTopBar(GuiGraphics g, int mx, int my) {
+        g.fill(0, 0, this.width, TOP_BAR_H, C_HEADER);
+        g.fill(0, TOP_BAR_H - 1, this.width, TOP_BAR_H, C_BORDER);
         String title = "Custom Music — MusicBee";
-        drawString(ps, font, title, this.width / 2 - font.width(title) / 2, 9, C_ACCENT);
+        g.drawString(font, title, this.width / 2 - font.width(title) / 2, 9, C_ACCENT);
     }
 
-    private void renderTreePanel(PoseStack ps, int mx, int my) {
+    private void renderTreePanel(GuiGraphics g, int mx, int my) {
         int x = MARGIN;
         int y = treeY;
         int w = leftPanelW;
         int h = treeH;
 
         // Header
-        fill(ps, x, y, x + w, y + HEADER_H, C_HEADER);
-        drawString(ps, font, "Библиотека", x + 4, y + 3, C_TEXT);
+        g.fill(x, y, x + w, y + HEADER_H, C_HEADER);
+        g.drawString(font, "Библиотека", x + 4, y + 3, C_TEXT);
         y += HEADER_H;
         h -= HEADER_H;
 
@@ -521,7 +521,7 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
             boolean hovered = mx >= x && mx < x + w && my >= rowY && my < rowY + ROW_H;
             boolean selected = node == selectedNode;
             int bg = selected ? C_SELECTED : hovered ? C_HOVER : (i % 2 == 0 ? C_ROW_EVEN : C_ROW_ODD);
-            fill(ps, x, rowY, x + w, rowY + ROW_H, bg);
+            g.fill(x, rowY, x + w, rowY + ROW_H, bg);
 
             int indent = getNodeDepth(node) * TREE_INDENT;
             int textX = x + 4 + indent;
@@ -529,7 +529,7 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
             // expand icon
             if (!node.children.isEmpty()) {
                 String icon = node.expanded ? "-" : "+";
-                drawString(ps, font, icon, textX, rowY + 2, C_TEXT_DIM);
+                g.drawString(font, icon, textX, rowY + 2, C_TEXT_DIM);
                 textX += 10;
             }
 
@@ -541,7 +541,7 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
                 name = font.plainSubstrByWidth(name, w - (textX - x) - 12) + "..";
             }
             int col = node.isSection ? C_ACCENT : (selected ? 0xFFFFFFFF : C_TEXT);
-            drawString(ps, font, name, textX, rowY + 2, col);
+            g.drawString(font, name, textX, rowY + 2, col);
         }
     }
 
@@ -555,16 +555,16 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
         return d;
     }
 
-    private void renderCenterHeader(PoseStack ps) {
+    private void renderCenterHeader(GuiGraphics g) {
         int x = centerX;
         int y = centerY;
         int w = centerW;
         int hh = 56;
 
-        fill(ps, x, y, x + w, y + hh, C_HEADER);
+        g.fill(x, y, x + w, y + hh, C_HEADER);
         // Cover placeholder
-        fill(ps, x + 6, y + 6, x + 44, y + 44, 0xFF333333);
-        drawString(ps, font, "♪", x + 18, y + 16, C_ACCENT);
+        g.fill(x + 6, y + 6, x + 44, y + 44, 0xFF333333);
+        g.drawString(font, "♪", x + 18, y + 16, C_ACCENT);
 
         String header = selectedNode != null ? selectedNode.name : "Все треки";
         String searchText = (searchBox != null && !searchBox.getValue().isBlank())
@@ -573,25 +573,25 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
                 displayedTracks.size(),
                 library.getDurationFormatted(displayedTracks.stream().mapToLong(Track::getDurationSeconds).sum()),
                 searchText);
-        drawString(ps, font, header, x + 50, y + 10, 0xFFFFFFFF);
-        drawString(ps, font, stats, x + 50, y + 24, C_TEXT_DIM);
+        g.drawString(font, header, x + 50, y + 10, 0xFFFFFFFF);
+        g.drawString(font, stats, x + 50, y + 24, C_TEXT_DIM);
         String viewText = "Вид: " + switch (viewMode) {
             case FOLDERS -> "Папки";
             case ARTISTS -> "Артисты";
             case ALBUMS -> "Альбомы";
             case ALL -> "Все";
         };
-        drawString(ps, font, viewText, x + 50, y + 38, C_TEXT_DIM);
+        g.drawString(font, viewText, x + 50, y + 38, C_TEXT_DIM);
     }
 
-    private void renderTable(PoseStack ps, int mx, int my) {
+    private void renderTable(GuiGraphics g, int mx, int my) {
         int x = centerX;
         int y = tableY;
         int w = centerW;
         int h = tableH;
 
         // Column headers
-        fill(ps, x, y, x + w, y + HEADER_H, C_HEADER);
+        g.fill(x, y, x + w, y + HEADER_H, C_HEADER);
         int[] colWidths = computeColumnWidths(w);
         int[] colX = new int[COLUMNS.length];
         int cx = x;
@@ -601,9 +601,9 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
             if (sortColumn == COLUMNS[i].col) {
                 label += (sortAsc ? " ▲" : " ▼");
             }
-            drawString(ps, font, label, cx + 3, y + 3, C_TEXT);
+            g.drawString(font, label, cx + 3, y + 3, C_TEXT);
             cx += colWidths[i];
-            fill(ps, cx - 1, y, cx, y + HEADER_H, C_BORDER);
+            g.fill(cx - 1, y, cx, y + HEADER_H, C_BORDER);
         }
         y += HEADER_H;
         h -= HEADER_H;
@@ -621,7 +621,7 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
             boolean hovered = mx >= x && mx < x + w && my >= rowY && my < rowY + ROW_H;
             boolean playing = current != null && current.equals(t);
             int bg = playing ? C_PLAYING : hovered ? C_HOVER : (i % 2 == 0 ? C_ROW_EVEN : C_ROW_ODD);
-            fill(ps, x, rowY, x + w, rowY + ROW_H, bg);
+            g.fill(x, rowY, x + w, rowY + ROW_H, bg);
 
             cx = x;
             String[] cells = formatCells(t, idx + 1);
@@ -630,7 +630,7 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
                 int cw = colWidths[c];
                 if (font.width(txt) > cw - 6) txt = font.plainSubstrByWidth(txt, cw - 12) + "..";
                 int col = playing ? C_GREEN : (hovered ? 0xFFFFFFFF : C_TEXT);
-                drawString(ps, font, txt, cx + 3, rowY + 2, col);
+                g.drawString(font, txt, cx + 3, rowY + 2, col);
                 cx += cw;
             }
         }
@@ -686,17 +686,17 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
         };
     }
 
-    private void renderRightPanel(PoseStack ps, int mx, int my) {
+    private void renderRightPanel(GuiGraphics g, int mx, int my) {
         int x = this.width - MARGIN - rightPanelW;
         int y = rightY;
         int w = rightPanelW;
 
         // Now playing queue
-        fill(ps, x, y, x + w, y + HEADER_H, C_HEADER);
-        drawString(ps, font, "Очередь", x + 4, y + 3, C_TEXT);
+        g.fill(x, y, x + w, y + HEADER_H, C_HEADER);
+        g.drawString(font, "Очередь", x + 4, y + 3, C_TEXT);
         y += HEADER_H;
         int qh = queueH - HEADER_H;
-        fill(ps, x, y, x + w, y + qh, C_ROW_ODD);
+        g.fill(x, y, x + w, y + qh, C_ROW_ODD);
 
         List<Track> queue = playlistManager.getCurrentQueue();
         int currentIdx = playlistManager.getCurrentIndex();
@@ -710,70 +710,70 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
             int rowY = y + i * ROW_H;
             boolean isCurrent = idx == currentIdx;
             int bg = isCurrent ? C_PLAYING : (i % 2 == 0 ? C_ROW_EVEN : C_ROW_ODD);
-            fill(ps, x, rowY, x + w, rowY + ROW_H, bg);
+            g.fill(x, rowY, x + w, rowY + ROW_H, bg);
             String txt = (idx + 1) + ". " + t.getArtist() + " - " + t.getTitle();
             if (font.width(txt) > w - 8) txt = font.plainSubstrByWidth(txt, w - 14) + "..";
             int col = isCurrent ? C_GREEN : C_TEXT;
-            drawString(ps, font, txt, x + 3, rowY + 2, col);
+            g.drawString(font, txt, x + 3, rowY + 2, col);
         }
 
         // Track info
         y = infoY;
-        fill(ps, x, y, x + w, y + HEADER_H, C_HEADER);
-        drawString(ps, font, "О треке", x + 4, y + 3, C_TEXT);
+        g.fill(x, y, x + w, y + HEADER_H, C_HEADER);
+        g.drawString(font, "О треке", x + 4, y + 3, C_TEXT);
         y += HEADER_H;
         int infoH = rightH - queueH - GAP - HEADER_H;
-        fill(ps, x, y, x + w, y + infoH, C_ROW_ODD);
+        g.fill(x, y, x + w, y + infoH, C_ROW_ODD);
 
         Track now = playerManager.getNowPlaying();
         if (now != null) {
             // Cover placeholder
-            fill(ps, x + (w - 64) / 2, y + 6, x + (w - 64) / 2 + 64, y + 70, 0xFF333333);
-            drawString(ps, font, "♪", x + (w - 64) / 2 + 26, y + 26, C_ACCENT);
+            g.fill(x + (w - 64) / 2, y + 6, x + (w - 64) / 2 + 64, y + 70, 0xFF333333);
+            g.drawString(font, "♪", x + (w - 64) / 2 + 26, y + 26, C_ACCENT);
             int ty = y + 78;
-            drawCentered(ps, now.getTitle(), x + w / 2, ty, 0xFFFFFFFF, w - 8);
+            drawCentered(g, now.getTitle(), x + w / 2, ty, 0xFFFFFFFF, w - 8);
             ty += 12;
-            drawCentered(ps, now.getArtist(), x + w / 2, ty, C_TEXT_DIM, w - 8);
+            drawCentered(g, now.getArtist(), x + w / 2, ty, C_TEXT_DIM, w - 8);
             ty += 12;
-            drawCentered(ps, now.getAlbum(), x + w / 2, ty, C_TEXT_DIM, w - 8);
+            drawCentered(g, now.getAlbum(), x + w / 2, ty, C_TEXT_DIM, w - 8);
             ty += 14;
             String meta = now.getFormat().getExt().toUpperCase(Locale.ROOT) + " · " + now.getDurationFormatted();
             if (now.getBitrate() > 0) meta += " · " + now.getBitrate() + "kbps";
-            drawCentered(ps, meta, x + w / 2, ty, C_TEXT_DIM, w - 8);
+            drawCentered(g, meta, x + w / 2, ty, C_TEXT_DIM, w - 8);
         } else {
-            drawCentered(ps, "Ничего не играет", x + w / 2, y + infoH / 2, C_TEXT_DIM, w - 8);
+            drawCentered(g, "Ничего не играет", x + w / 2, y + infoH / 2, C_TEXT_DIM, w - 8);
         }
     }
 
-    private void drawCentered(PoseStack ps, String text, int cx, int y, int color, int maxW) {
+    private void drawCentered(GuiGraphics g, String text, int cx, int y, int color, int maxW) {
         if (font.width(text) > maxW) text = font.plainSubstrByWidth(text, maxW - 8) + "..";
-        drawString(ps, font, text, cx - font.width(text) / 2, y, color);
+        g.drawString(font, text, cx - font.width(text) / 2, y, color);
     }
 
-    private void renderBottomBar(PoseStack ps, int mx, int my) {
+    private void renderBottomBar(GuiGraphics g, int mx, int my) {
         int y = this.height - BOTTOM_BAR_H;
-        fill(ps, 0, y, this.width, y + BOTTOM_BAR_H, C_HEADER);
-        fill(ps, 0, y, this.width, y + 1, C_BORDER);
+        g.fill(0, y, this.width, y + BOTTOM_BAR_H, C_HEADER);
+        g.fill(0, y, this.width, y + 1, C_BORDER);
 
         Track now = playerManager.getNowPlaying();
         String trackLine = now != null ? now.getArtist() + " - " + now.getTitle() : "Нет воспроизведения";
-        drawString(ps, font, trackLine, 260, y + 10, now != null ? C_GREEN : C_TEXT_DIM);
+        g.drawString(font, trackLine, 260, y + 10, now != null ? C_GREEN : C_TEXT_DIM);
 
         // Progress bar
         int px = 260;
         int py = y + 22;
         int pw = Math.max(80, this.width - px - 160);
         int ph = 6;
-        fill(ps, px, py, px + pw, py + ph, 0xFF444444);
+        g.fill(px, py, px + pw, py + ph, 0xFF444444);
         if (now != null) {
             float ratio = playerManager.getProgressRatio();
-            fill(ps, px, py, px + (int) (pw * ratio), py + ph, C_ACCENT);
+            g.fill(px, py, px + (int) (pw * ratio), py + ph, C_ACCENT);
             String time = formatTime(playerManager.getCurrentPositionSeconds()) + " / " + now.getDurationFormatted();
-            drawString(ps, font, time, px + pw + 6, py - 2, C_TEXT);
+            g.drawString(font, time, px + pw + 6, py - 2, C_TEXT);
         }
 
         String vol = String.format("Громк: %d%%", (int)(playerManager.getVolume() * 100));
-        drawString(ps, font, vol, this.width - 90, y + 10, C_TEXT_DIM);
+        g.drawString(font, vol, this.width - 90, y + 10, C_TEXT_DIM);
     }
 
     private String formatTime(long seconds) {
@@ -871,7 +871,7 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
     }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double delta) {
+    public boolean mouseScrolled(double mx, double my, double scrollX, double delta) {
         // Tree
         if (mx >= MARGIN && mx < MARGIN + leftPanelW && my >= treeY && my < treeY + treeH) {
             treeScroll -= (int) delta;
@@ -887,7 +887,7 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
             queueScroll -= (int) delta;
             return true;
         }
-        return super.mouseScrolled(mx, my, delta);
+        return super.mouseScrolled(mx, my, scrollX, delta);
     }
 
     @Override

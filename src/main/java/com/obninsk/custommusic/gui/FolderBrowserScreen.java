@@ -1,6 +1,6 @@
 package com.obninsk.custommusic.gui;
 
-import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.gui.GuiGraphics;
 import com.obninsk.custommusic.music.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
@@ -74,7 +74,7 @@ public class FolderBrowserScreen extends Screen implements AudioPlayerManager.Pl
         int topBtnW = 60;
         int topBtnH = 16;
         int topY = MARGIN;
-        addRenderableWidget(new Button(this.width - (topBtnW*2 + MARGIN + 6) - topBtnW - 6, topY, topBtnW, topBtnH,
+        addRenderableWidget(GuiWidgets.button(this.width - (topBtnW*2 + MARGIN + 6) - topBtnW - 6, topY, topBtnW, topBtnH,
                 Component.literal("Обновить"), b -> {
             setStatus("Сканирование...");
             library.scanAsync().thenRun(() -> {
@@ -90,7 +90,7 @@ public class FolderBrowserScreen extends Screen implements AudioPlayerManager.Pl
                 });
             });
         }));
-        addRenderableWidget(new Button(this.width - (topBtnW + MARGIN + 4), topY, topBtnW, topBtnH,
+        addRenderableWidget(GuiWidgets.button(this.width - (topBtnW + MARGIN + 4), topY, topBtnW, topBtnH,
                 Component.literal("Папка"), b -> {
             try {
                 net.minecraft.Util.getPlatform().openUri(library.getMusicFolder().toURI());
@@ -100,12 +100,12 @@ public class FolderBrowserScreen extends Screen implements AudioPlayerManager.Pl
         }));
 
         int volX = searchW + MARGIN + 8;
-        addRenderableWidget(new Button(volX, topY, 28, topBtnH, Component.literal("-"), b -> {
+        addRenderableWidget(GuiWidgets.button(volX, topY, 28, topBtnH, Component.literal("-"), b -> {
             float v = playerManager.getVolume() - 0.1f;
             playerManager.setVolume(v);
             setStatus(String.format("Громкость: %d%%", (int)(playerManager.getVolume()*100)));
         }));
-        addRenderableWidget(new Button(volX + 30, topY, 28, topBtnH, Component.literal("+"), b -> {
+        addRenderableWidget(GuiWidgets.button(volX + 30, topY, 28, topBtnH, Component.literal("+"), b -> {
             float v = playerManager.getVolume() + 0.1f;
             playerManager.setVolume(v);
             setStatus(String.format("Громкость: %d%%", (int)(playerManager.getVolume()*100)));
@@ -118,13 +118,13 @@ public class FolderBrowserScreen extends Screen implements AudioPlayerManager.Pl
         int startX = (this.width - totalW)/2;
         if (startX < MARGIN) startX = MARGIN;
 
-        addRenderableWidget(new Button(startX, bottomY, btnW, btnH, Component.literal("Вверх"), b -> {
+        addRenderableWidget(GuiWidgets.button(startX, bottomY, btnW, btnH, Component.literal("Вверх"), b -> {
             if (currentNode != null && currentNode.getParent() != null) {
                 currentNode = currentNode.getParent();
                 refreshCurrentFolder();
             }
         }));
-        playPauseButton = addRenderableWidget(new Button(startX + btnW + gap, bottomY, btnW, btnH,
+        playPauseButton = addRenderableWidget(GuiWidgets.button(startX + btnW + gap, bottomY, btnW, btnH,
                 Component.literal(playerManager.isPlaying() && !playerManager.isPaused() ? "Пауза" : "Играть"), b -> {
             if (playerManager.isPlaying()) {
                 playerManager.togglePause();
@@ -136,12 +136,12 @@ public class FolderBrowserScreen extends Screen implements AudioPlayerManager.Pl
                 else setStatus("Нет треков");
             }
         }));
-        addRenderableWidget(new Button(startX + (btnW+gap)*2, bottomY, btnW, btnH, Component.literal("Далее >>"), b -> {
+        addRenderableWidget(GuiWidgets.button(startX + (btnW+gap)*2, bottomY, btnW, btnH, Component.literal("Далее >>"), b -> {
             Track next = playlistManager.next();
             if (next != null) playerManager.play(next);
             else setStatus("Конец очереди");
         }));
-        Button modeBtn = addRenderableWidget(new Button(startX + (btnW+gap)*3, bottomY, btnW, btnH,
+        Button modeBtn = addRenderableWidget(GuiWidgets.button(startX + (btnW+gap)*3, bottomY, btnW, btnH,
                 Component.literal(playlistManager.getPlayMode().getDisplayName()), b -> {
             PlayMode nextMode = playlistManager.getPlayMode().next();
             playlistManager.setPlayMode(nextMode);
@@ -150,7 +150,7 @@ public class FolderBrowserScreen extends Screen implements AudioPlayerManager.Pl
         }));
         modeBtn.setMessage(Component.literal(playlistManager.getPlayMode().getDisplayName()));
 
-        addRenderableWidget(new Button(MARGIN, bottomY, 60, btnH, Component.literal("Артисты"), b -> {
+        addRenderableWidget(GuiWidgets.button(MARGIN, bottomY, 60, btnH, Component.literal("Артисты"), b -> {
             Minecraft.getInstance().setScreen(new MusicPlayerScreen());
         }));
 
@@ -229,38 +229,38 @@ public class FolderBrowserScreen extends Screen implements AudioPlayerManager.Pl
     }
 
     @Override
-    public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTicks) {
+    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTicks) {
         recalcLayout();
-        renderBackground(poseStack);
-        super.render(poseStack, mouseX, mouseY, partialTicks);
+        renderBackground(g, mouseX, mouseY, partialTicks);
+        super.render(g, mouseX, mouseY, partialTicks);
         String path = currentNode != null ? currentNode.getRelativePath(library.getMusicFolder()) : "/";
         if (path.isEmpty()) path = "/";
         String breadcrumb = "Папка: " + path + "  [" + currentNode.getTotalTrackCountRecursive() + " треков]";
         if (font.width(breadcrumb) > width - 200) breadcrumb = font.plainSubstrByWidth(breadcrumb, width - 210) + "...";
-        drawString(poseStack, font, breadcrumb, MARGIN, MARGIN + 20, 0xFFFFFF);
+        g.drawString(font, breadcrumb, MARGIN, MARGIN + 20, 0xFFFFFF);
         Track now = playerManager.getNowPlaying();
         String nowText = now != null ?
                 (playerManager.isPaused() ? "[Пауза] " : playerManager.isPlaying() ? "[Играет] " : "[Стоп] ") + now.getFile().getName() + " | " + now.getDurationFormatted()
                 : "Нет воспроизведения.";
         int maxNow = width - 20;
         if (font.width(nowText) > maxNow) nowText = font.plainSubstrByWidth(nowText, maxNow - 10) + "...";
-        drawString(poseStack, font, nowText, MARGIN, MARGIN + 32, 0x55FF55);
+        g.drawString(font, nowText, MARGIN, MARGIN + 32, 0x55FF55);
         if (!statusMessage.isEmpty() && System.currentTimeMillis() - statusMessageTime < 4000) {
-            drawString(poseStack, font, statusMessage, MARGIN, height - 12, 0xFFFF55);
+            g.drawString(font, statusMessage, MARGIN, height - 12, 0xFFFF55);
         }
-        fill(poseStack, leftX -1, colTop -1, leftX + colW -1, colBottom, 0xAA000000);
-        fill(poseStack, rightX -1, colTop -1, Math.min(rightX + colW -1, width - MARGIN), colBottom, 0xAA000000);
+        g.fill(leftX -1, colTop -1, leftX + colW -1, colBottom, 0xAA000000);
+        g.fill(rightX -1, colTop -1, Math.min(rightX + colW -1, width - MARGIN), colBottom, 0xAA000000);
         String leftHeader = "Папки (" + currentSubfolders.size() + ")";
         if (currentNode != null && currentNode.getParent() != null) leftHeader += " [.. вверх]";
-        drawString(poseStack, font, leftHeader, leftX +2, colTop - 12 +2, 0xAAAAFF);
-        drawString(poseStack, font, "Треки (" + filteredTracks.size() + "/" + currentTracks.size() + ") [Shift+клик=рекурсивно]", rightX +2, colTop -12 +2, 0xAAFFAA);
-        renderFolderList(poseStack, leftX, colTop, colW, colBottom - colTop, mouseX, mouseY);
-        renderTrackList(poseStack, rightX, colTop, colW, colBottom - colTop, mouseX, mouseY);
+        g.drawString(font, leftHeader, leftX +2, colTop - 12 +2, 0xAAAAFF);
+        g.drawString(font, "Треки (" + filteredTracks.size() + "/" + currentTracks.size() + ") [Shift+клик=рекурсивно]", rightX +2, colTop -12 +2, 0xAAFFAA);
+        renderFolderList(g, leftX, colTop, colW, colBottom - colTop, mouseX, mouseY);
+        renderTrackList(g, rightX, colTop, colW, colBottom - colTop, mouseX, mouseY);
         String volText = String.format("Громк %d%%", (int)(playerManager.getVolume()*100));
-        drawString(poseStack, font, volText, MARGIN + 220, MARGIN + 4, 0xAAAAAA);
+        g.drawString(font, volText, MARGIN + 220, MARGIN + 4, 0xAAAAAA);
     }
 
-    private void renderFolderList(PoseStack ps, int x, int y, int w, int h, int mx, int my) {
+    private void renderFolderList(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
         int visible = Math.max(1, h / ROW_HEIGHT);
         folderScroll = Mth.clamp(folderScroll, 0, Math.max(0, currentSubfolders.size() + 1 - visible));
         int totalItems = currentSubfolders.size() + (currentNode != null && currentNode.getParent() != null ? 1 : 0);
@@ -279,15 +279,15 @@ public class FolderBrowserScreen extends Screen implements AudioPlayerManager.Pl
             }
             boolean hovered = mx >= x && mx < x + w && my >= rowY && my < rowY + ROW_HEIGHT;
             int bg = hovered ? 0xFF333333 : 0x00000000;
-            if (bg!=0) fill(ps, x, rowY, x + w -2, rowY + ROW_HEIGHT -1, bg);
+            if (bg!=0) g.fill(x, rowY, x + w -2, rowY + ROW_HEIGHT -1, bg);
             int col = isUp ? 0xFFAAAA : hovered ? 0xFFFFAA : 0xCCCCFF;
             String disp = name;
             if (font.width(disp) > w - 6) disp = font.plainSubstrByWidth(disp, w - 12) + "..";
-            drawString(ps, font, disp, x+2, rowY+2, col);
+            g.drawString(font, disp, x+2, rowY+2, col);
         }
     }
 
-    private void renderTrackList(PoseStack ps, int x, int y, int w, int h, int mx, int my) {
+    private void renderTrackList(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
         int visible = Math.max(1, h / ROW_HEIGHT);
         int maxW = this.width - x - MARGIN - 2;
         if (maxW < w) w = maxW;
@@ -302,11 +302,11 @@ public class FolderBrowserScreen extends Screen implements AudioPlayerManager.Pl
             boolean hovered = mx >= x && mx < x + w && my >= rowY && my < rowY + ROW_HEIGHT;
             boolean isPlaying = current != null && current.equals(t);
             int bg = isPlaying ? 0xFF336633 : hovered ? 0xFF333333 : (i%2==0?0xFF222222:0x00000000);
-            fill(ps, x, rowY, x + w -2, rowY + ROW_HEIGHT -1, bg);
+            g.fill(x, rowY, x + w -2, rowY + ROW_HEIGHT -1, bg);
             int col = isPlaying ? 0x55FF55 : hovered ? 0xFFFFAA : 0xEEEEEE;
             String line = String.format("%s [%s] %s", t.getFile().getName(), t.getFormat().getExt().toUpperCase(), t.getDurationFormatted());
             if (font.width(line) > w - 6) line = font.plainSubstrByWidth(line, w - 12) + "..";
-            drawString(ps, font, line, x+2, rowY+2, col);
+            g.drawString(font, line, x+2, rowY+2, col);
         }
     }
 
@@ -340,11 +340,11 @@ public class FolderBrowserScreen extends Screen implements AudioPlayerManager.Pl
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (mouseY < colTop || mouseY >= colBottom) return super.mouseScrolled(mouseX, mouseY, delta);
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double delta) {
+        if (mouseY < colTop || mouseY >= colBottom) return super.mouseScrolled(mouseX, mouseY, scrollX, delta);
         if (mouseX >= leftX && mouseX < leftX + colW) { folderScroll -= (int)delta; return true; }
         if (mouseX >= rightX && mouseX < rightX + colW) { trackScroll -= (int)delta; return true; }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, delta);
     }
 
     private void updatePlayPauseButton() {

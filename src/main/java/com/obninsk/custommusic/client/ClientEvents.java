@@ -4,17 +4,20 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.obninsk.custommusic.CustomMusicMod;
 import com.obninsk.custommusic.gui.MusicBeeScreen;
 import com.obninsk.custommusic.music.AudioPlayerManager;
+import com.obninsk.custommusic.music.MusicLibraryManager;
+import com.obninsk.custommusic.music.PlaylistManager;
 import com.obninsk.custommusic.music.Track;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = CustomMusicMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = CustomMusicMod.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class ClientEvents {
 
     public static KeyMapping OPEN_PLAYER_KEY;
@@ -22,6 +25,13 @@ public class ClientEvents {
     public static KeyMapping NEXT_TRACK_KEY;
     public static KeyMapping PREV_TRACK_KEY;
     public static KeyMapping PLAY_PAUSE_KEY;
+
+    @SubscribeEvent
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        CustomMusicMod.LOGGER.info("CustomMusic client setup");
+        // создаёт папку custommusic/ и запускает фоновое сканирование библиотеки
+        event.enqueueWork(() -> MusicLibraryManager.getInstance().init());
+    }
 
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
@@ -63,8 +73,11 @@ public class ClientEvents {
         CustomMusicMod.LOGGER.info("Keybindings registered: M (folders), O (artists), N, B, P");
     }
 
-    @Mod.EventBusSubscriber(modid = CustomMusicMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
-    public static class ForgeEvents {
+    /**
+     * Game bus events (NeoForge.EVENT_BUS).
+     */
+    @EventBusSubscriber(modid = CustomMusicMod.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+    public static class GameEvents {
         @SubscribeEvent
         public static void onKeyInput(InputEvent.Key event) {
             Minecraft mc = Minecraft.getInstance();
@@ -77,12 +90,12 @@ public class ClientEvents {
                 mc.setScreen(new MusicBeeScreen());
             }
             if (NEXT_TRACK_KEY != null && NEXT_TRACK_KEY.consumeClick()) {
-                var pm = com.obninsk.custommusic.music.PlaylistManager.getInstance();
+                PlaylistManager pm = PlaylistManager.getInstance();
                 Track next = pm.next();
                 if (next != null) AudioPlayerManager.getInstance().play(next);
             }
             if (PREV_TRACK_KEY != null && PREV_TRACK_KEY.consumeClick()) {
-                var pm = com.obninsk.custommusic.music.PlaylistManager.getInstance();
+                PlaylistManager pm = PlaylistManager.getInstance();
                 Track prev = pm.previous();
                 if (prev != null) AudioPlayerManager.getInstance().play(prev);
             }

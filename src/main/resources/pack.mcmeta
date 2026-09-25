@@ -1,8 +1,8 @@
 {
   "pack": {
-    "description": "custommusic resources",
-    "pack_format": 9,
-    "forge:resource_pack_format": 9,
-    "forge:data_pack_format": 10
+    "description": "CustomMusic resources",
+    "pack_format": 34,
+    "neoforge:resource_pack_format": 34,
+    "neoforge:data_pack_format": 48
   }
 }

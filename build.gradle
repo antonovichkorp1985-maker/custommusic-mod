@@ -1,80 +1,80 @@
 plugins {
-    id 'eclipse'
     id 'idea'
+    id 'java-library'
     id 'maven-publish'
-    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'net.neoforged.moddev' version '2.0.91'
+    id 'com.gradleup.shadow' version '8.3.9'
 }
 
-version = mod_version
+version = "${minecraft_version}-${mod_version}"
 group = mod_group_id
 
 base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+// Mojang ships Java 21 to end users starting in 1.20.5, so mods should target Java 21.
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
 
-minecraft {
-    mappings channel: mapping_channel, version: mapping_version
-    copyIdeResources = true
+repositories {
+    mavenCentral()
+}
+
+neoForge {
+    version = project.neo_version
+
     runs {
-        configureEach {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            mods {
-                "${mod_id}" {
-                    source sourceSets.main
-                }
-            }
-        }
         client {
-            property 'forge.enabledGameTestNamespaces', mod_id
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
+
         server {
-            property 'forge.enabledGameTestNamespaces', mod_id
-            args '--nogui'
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
-        gameTestServer {
-            property 'forge.enabledGameTestNamespaces', mod_id
+
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
         }
-        data {
-            workingDirectory project.file('run-data')
-            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
         }
     }
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
-repositories {
-    mavenCentral()
-}
-
+// ---------------------------------------------------------------------------
+// Audio decoding libraries. They are NOT part of Minecraft/NeoForge, so they
+// have to be bundled into the released jar (see the shadowJar task below).
+// ---------------------------------------------------------------------------
 configurations {
     audioSpi
 }
 
 dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-
-    // Audio decoding SPIs - MP3 support via SPI
     def audioDeps = [
+            // MP3 (SPI)
             'com.googlecode.soundlibs:mp3spi:1.9.5.4',
             'com.googlecode.soundlibs:jlayer:1.0.1.4',
             'com.googlecode.soundlibs:tritonus-share:0.3.7.4',
-            // OGG Vorbis support
+            // OGG Vorbis
             'com.googlecode.soundlibs:jorbis:0.0.17.4',
             'com.googlecode.soundlibs:vorbisspi:1.0.3.3',
             'org.gagravarr:vorbis-java-core:0.8',
-            // FLAC support - modern JFLAC with SPI + JSE FLAC SPI
+            // FLAC
             'org.jflac:jflac-codec:1.5.2',
             'io.github.jseproject:jse-spi-flac:1.1.0',
             'io.github.jseproject:jse-api:1.1.0',
-            // Metadata parsing
+            // Metadata (tags)
             'net.jthink:jaudiotagger:3.0.1'
     ]
 
@@ -84,18 +84,50 @@ dependencies {
     }
 }
 
-tasks.named('processResources', ProcessResources).configure {
+// Expands ${...} properties in neoforge.mods.toml / pack.mcmeta
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
-            minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
-            forge_version: forge_version, forge_version_range: forge_version_range,
-            loader_version_range: loader_version_range,
-            mod_id: mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version,
-            mod_authors: mod_authors, mod_description: mod_description,
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description
     ]
     inputs.properties replaceProperties
-    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
-        expand replaceProperties + [project: project]
-    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+// ---------------------------------------------------------------------------
+// Fat jar with the audio libraries bundled in: build/libs/<name>-all.jar
+// THIS is the file you put in your mods folder / upload to a release.
+// ---------------------------------------------------------------------------
+tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).configure {
+    archiveClassifier = 'all'
+    configurations = [project.configurations.audioSpi]
+
+    exclude 'org/apache/commons/io/**'
+    exclude 'org/slf4j/**'
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    exclude 'module-info.class'
+
+    mergeServiceFiles()
+}
+
+tasks.named('assemble') {
+    dependsOn tasks.named('shadowJar')
 }
 
 tasks.named('jar', Jar).configure {
@@ -110,22 +142,6 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])
     }
-    finalizedBy 'reobfJar'
-}
-
-tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).configure {
-    dependsOn 'reobfJar'
-    archiveClassifier = 'all'
-    from zipTree(tasks.named('jar', Jar).get().archiveFile)
-    configurations = [project.configurations.audioSpi]
-
-    exclude 'org/apache/commons/io/**'
-    exclude 'org/slf4j/**'
-    exclude 'META-INF/*.SF'
-    exclude 'META-INF/*.DSA'
-    exclude 'META-INF/*.RSA'
-
-    mergeServiceFiles()
 }
 
 publishing {
@@ -136,11 +152,18 @@ publishing {
     }
     repositories {
         maven {
-            url "file://${project.projectDir}/mcmodsrepo"
+            url "file://${project.projectDir}/repo"
         }
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
 }
