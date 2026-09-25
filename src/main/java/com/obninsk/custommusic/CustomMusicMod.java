@@ -41,12 +41,12 @@ public class CustomMusicMod {
 
     private void setup(final FMLCommonSetupEvent event) {
         LOGGER.info("CustomMusic common setup");
-        event.enqueueWork(() -> {
-            MusicLibraryManager.getInstance().init();
-        });
+        // библиотеку сканируем только на клиенте (см. clientSetup): на выделенном сервере
+        // CLIENT-конфиг не загружен, и музыка там не нужна
     }
 
     private void clientSetup(final FMLClientSetupEvent event) {
         LOGGER.info("CustomMusic client setup");
+        event.enqueueWork(() -> MusicLibraryManager.getInstance().init());
     }
 }

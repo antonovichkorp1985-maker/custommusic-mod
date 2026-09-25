@@ -103,7 +103,7 @@ public class MusicBeeScreen extends Screen implements AudioPlayerManager.Playbac
         // Force sequential order on open so the queue matches the displayed list by default
         playlistManager.setPlayMode(PlayMode.SEQUENTIAL);
 
-        String cfgMode = com.obninsk.custommusic.config.ModConfig.CLIENT.defaultViewMode.get();
+        String cfgMode = com.obninsk.custommusic.config.ModConfig.defaultViewMode();
         try {
             viewMode = ViewMode.valueOf(cfgMode.toUpperCase(Locale.ROOT));
         } catch (Exception ignored) {

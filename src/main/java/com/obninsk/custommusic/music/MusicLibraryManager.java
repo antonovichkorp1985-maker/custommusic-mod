@@ -24,6 +24,7 @@ public class MusicLibraryManager {
     private final List<LibraryListener> listeners = new ArrayList<>();
     private File musicFolder;
 
+    private volatile boolean initialized = false;
     private volatile boolean scanning = false;
     private volatile List<Track> allTracksSnapshot = List.of();
     private volatile Map<String, Artist> artistsSnapshot = Map.of();
@@ -53,8 +54,10 @@ public class MusicLibraryManager {
         }
     }
 
-    public void init() {
-        String cfgFolder = ModConfig.CLIENT.musicFolder.get();
+    /** Инициализация идемпотентна: её можно звать и из client setup, и лениво из GUI. */
+    public synchronized void init() {
+        if (initialized) return;
+        String cfgFolder = ModConfig.musicFolder();
         Path gameDir = FMLPaths.GAMEDIR.get();
         if (cfgFolder == null || cfgFolder.isBlank()) cfgFolder = "custommusic";
         musicFolder = gameDir.resolve(cfgFolder).toFile();
@@ -79,17 +82,25 @@ public class MusicLibraryManager {
         }
         CustomMusicMod.LOGGER.info("Music folder: {}", musicFolder.getAbsolutePath());
 
-        if (ModConfig.CLIENT.autoScanOnStartup.get()) {
+        initialized = true;
+
+        if (ModConfig.autoScanOnStartup()) {
             scanAsync();
         }
     }
 
-    public File getMusicFolder() { return musicFolder; }
+    public File getMusicFolder() { ensureInit(); return musicFolder; }
 
     public boolean isScanning() { return scanning; }
 
     public CompletableFuture<Void> scanAsync() {
+        ensureInit();
         return CompletableFuture.runAsync(this::scan);
+    }
+
+    /** Если init() ещё не вызывали - инициализируемся лениво. */
+    private void ensureInit() {
+        if (!initialized) init();
     }
 
     public void scan() {
@@ -110,7 +121,7 @@ public class MusicLibraryManager {
             List<File> files = listMusicFiles(musicFolder);
             CustomMusicMod.LOGGER.info("Found {} potential music files", files.size());
 
-            boolean enableDSF = ModConfig.CLIENT.enableDSF.get();
+            boolean enableDSF = ModConfig.enableDSF();
 
             // локальные коллекции, заполняем без блокировок
             List<Track> tracks = new ArrayList<>(files.size());
@@ -306,7 +317,7 @@ public class MusicLibraryManager {
             } else {
                 AudioFormatType t = AudioFormatType.fromFileName(f.getName());
                 if (t != AudioFormatType.UNKNOWN) {
-                    if (t.isDSD() && !ModConfig.CLIENT.enableDSF.get()) continue;
+                    if (t.isDSD() && !ModConfig.enableDSF()) continue;
                     musicFiles.add(f);
                 }
             }

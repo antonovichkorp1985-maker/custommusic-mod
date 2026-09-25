@@ -47,4 +47,25 @@ public class ModConfig {
             builder.pop();
         }
     }
+
+    // ---------------------------------------------------------------------------------
+    // Безопасные геттеры: CLIENT-конфиг грузится только на клиенте, на выделенном сервере
+    // ConfigValue.get() бросает IllegalStateException. Те же геттеры, что в NeoForge-версии.
+    // ---------------------------------------------------------------------------------
+    public static String musicFolder()        { return safe(CLIENT.musicFolder, "custommusic"); }
+    public static double defaultVolume()      { return safe(CLIENT.defaultVolume, 0.7d); }
+    public static boolean pauseVanillaMusic() { return safe(CLIENT.pauseVanillaMusic, true); }
+    public static boolean autoScanOnStartup() { return safe(CLIENT.autoScanOnStartup, true); }
+    public static String defaultPlayMode()    { return safe(CLIENT.defaultPlayMode, "SEQUENTIAL"); }
+    public static boolean enableDSF()         { return safe(CLIENT.enableDSF, false); }
+    public static String defaultViewMode()    { return safe(CLIENT.defaultViewMode, "FOLDERS"); }
+
+    private static <T> T safe(ForgeConfigSpec.ConfigValue<T> value, T fallback) {
+        try {
+            T v = value.get();
+            return v != null ? v : fallback;
+        } catch (Throwable t) {
+            return fallback;
+        }
+    }
 }

@@ -25,6 +25,18 @@ jobs:
       - name: Build fat jar
         run: chmod +x ./gradlew && ./gradlew shadowJar --no-daemon
 
+      - name: Check fat jar for duplicated Minecraft libraries
+        run: |
+          # com.jcraft.jorbis, slf4j, commons-io уже есть в Minecraft.
+          # Дубликат пакета -> java.lang.module.ResolutionException -> игра не запускается.
+          BAD=$(unzip -Z1 build/libs/*-all.jar | grep -E "^(com/jcraft/|junit/|org/slf4j/|org/apache/commons/io/)" || true)
+          if [ -n "$BAD" ]; then
+            echo "::error::В fat jar попали классы, которые уже поставляет Minecraft:"
+            echo "$BAD" | head -20
+            exit 1
+          fi
+          echo "OK: дубликатов библиотек Minecraft нет"
+
       - name: Upload fat jar
         uses: actions/upload-artifact@v4
         with:

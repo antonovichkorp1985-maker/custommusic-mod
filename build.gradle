@@ -67,7 +67,6 @@ dependencies {
             'com.googlecode.soundlibs:jlayer:1.0.1.4',
             'com.googlecode.soundlibs:tritonus-share:0.3.7.4',
             // OGG Vorbis support
-            'com.googlecode.soundlibs:jorbis:0.0.17.4',
             'com.googlecode.soundlibs:vorbisspi:1.0.3.3',
             'org.gagravarr:vorbis-java-core:0.8',
             // FLAC support - modern JFLAC with SPI + JSE FLAC SPI
@@ -82,6 +81,11 @@ dependencies {
         implementation dep
         audioSpi dep
     }
+
+    // jorbis предоставляет сам Minecraft (org.jcraft:jorbis:0.0.17) - только для компиляции.
+    // Бандлить его нельзя: дубль пакетов com.jcraft.jogg/jorbis ломает запуск игры
+    // (java.lang.module.ResolutionException) при модах вроде Iris.
+    compileOnly 'org.jcraft:jorbis:0.0.17'
 }
 
 tasks.named('processResources', ProcessResources).configure {
@@ -121,6 +125,8 @@ tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.Shadow
 
     exclude 'org/apache/commons/io/**'
     exclude 'org/slf4j/**'
+    exclude 'com/jcraft/**'
+    exclude 'junit/**'
     exclude 'META-INF/*.SF'
     exclude 'META-INF/*.DSA'
     exclude 'META-INF/*.RSA'
