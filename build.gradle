@@ -124,12 +124,16 @@ tasks.register('mergeJseLibs', Jar) {
     manifest {
         attributes(['Automatic-Module-Name': 'io.github.jseproject.merged'])
     }
-    from { configurations.jseMerge.collect { zipTree(it) } }
-    exclude 'META-INF/services/**'
-    exclude 'META-INF/*.SF'
-    exclude 'META-INF/*.DSA'
-    exclude 'META-INF/*.RSA'
-    exclude 'module-info.class'
+    // exclude должен применяться ТОЛЬКО к распакованным jar'ам: на уровне всей задачи
+    // он вырезал и наши же слитые META-INF/services из mergedServicesDir, из-за чего
+    // jse-провайдеры не попадали в ServiceLoader (по имени класса грузились, а через SPI - нет).
+    from({ configurations.jseMerge.collect { zipTree(it) } }) {
+        exclude 'META-INF/services/**'
+        exclude 'META-INF/*.SF'
+        exclude 'META-INF/*.DSA'
+        exclude 'META-INF/*.RSA'
+        exclude 'module-info.class'
+    }
     from(mergedServicesDir)
 }
 

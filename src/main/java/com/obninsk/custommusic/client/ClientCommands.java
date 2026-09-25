@@ -37,6 +37,15 @@ public class ClientCommands {
                     ctx.getSource().sendSuccess(() -> Component.literal("Music folder: " + folder.getAbsolutePath()), false);
                     return 1;
                 }))
+                .then(Commands.literal("selftest").executes(ctx -> {
+                    // покажет в latest.log, какие SPI видны и какие форматы реально декодируются
+                    String report = com.obninsk.custommusic.music.AudioSelfTest.run(
+                            MusicLibraryManager.getInstance().getMusicFolder(), 5);
+                    ctx.getSource().sendSuccess(() -> Component.literal(
+                            "CustomMusic selftest выполнен, подробности в latest.log ("
+                                    + report.lines().count() + " строк)"), false);
+                    return 1;
+                }))
                 .then(Commands.literal("rescan").executes(ctx -> {
                     MusicLibraryManager.getInstance().scanAsync()
                             .thenRun(() -> ctx.getSource().sendSuccess(() -> Component.literal("Rescan complete"), false));

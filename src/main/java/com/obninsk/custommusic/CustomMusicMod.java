@@ -35,5 +35,8 @@ public class CustomMusicMod {
         LOGGER.info("CustomMusic common setup");
         // Библиотеку сканируем только на клиенте (см. ClientEvents#onClientSetup):
         // на выделенном сервере CLIENT-конфиг не загружен, да и музыка там не нужна.
+
+        // Диагностика аудио-подсистемы: -Dcustommusic.selftest=/путь/к/папке/с/музыкой
+        event.enqueueWork(com.obninsk.custommusic.music.AudioSelfTest::runIfRequested);
     }
 }
