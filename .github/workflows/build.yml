@@ -23,7 +23,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build fat jar
-        run: ./gradlew shadowJar --no-daemon
+        run: chmod +x ./gradlew && ./gradlew shadowJar --no-daemon
 
       - name: Upload fat jar
         uses: actions/upload-artifact@v4
