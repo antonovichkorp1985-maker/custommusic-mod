@@ -4,7 +4,7 @@
 Играй свою музыку из папки `custommusic/` прямо в Minecraft, не заменяя ванильные треки.
 
 > Это порт версии для **1.19.2 Forge** на **1.21.1 NeoForge**.
-> Версия для 1.19.2 Forge лежит в ветке/репозитории `custommusic-mod` (jar `custommusic-1.0.0-all.jar`).
+> Версия для 1.19.2 Forge лежит в ветке/репозитории `custommusic-mod` (jar `custommusic-1.21.1-1.0.1.jar`).
 
 ## Поддерживаемые форматы
 
@@ -49,17 +49,20 @@
 Сборка из исходников:
 
 ```bash
-./gradlew shadowJar
-# Windows PowerShell: .\gradlew shadowJar
+./gradlew build
+# Windows PowerShell: .\gradlew build
 ```
 
-Готовый **fat jar** будет в:
+Готовый jar будет в:
 
 ```
-build/libs/custommusic-1.21.1-1.0.0-all.jar
+build/libs/custommusic-1.21.1-1.0.1.jar
 ```
 
-Его нужно скопировать в папку модов (`mods/`). **Важно:** использовать именно jar с суффиксом `-all`, а не обычный `custommusic-1.21.1-1.0.0.jar`, иначе MP3/FLAC/OGG не заработают (в нём нет аудио-библиотек).
+Его нужно скопировать в папку модов (`mods/`). Отдельно библиотеки ставить не нужно: аудио-декодеры (MP3SPI/JLayer, jflac, jse-spi-flac) и jaudiotagger лежат внутри этого же jar в `META-INF/jarjar/`, NeoForge подхватывает их сам.
+
+> Суффикс `-all` больше не используется: с версии 1.0.1 вместо шейдинга (fat jar) применяется **Jar-in-Jar**.
+> Шейдить `com.jcraft.jorbis` в NeoForge нельзя — Minecraft поставляет его сам, и дубль пакета роняет запуск игры.
 
 При первом запуске создаётся папка `custommusic/` рядом с `mods/`. Помести туда музыку и нажми в GUI **Обновить** или перезапусти игру.
 
@@ -103,7 +106,11 @@ build/libs/custommusic-1.21.1-1.0.0-all.jar
 ## FAQ
 
 **Q: Музыка не играет, ошибка "Unsupported audio format"?**
-A: Скорее всего, используется не fat jar. Бери `custommusic-1.21.1-1.0.0-all.jar`.
+A: Проверь, что используешь `custommusic-1.21.1-1.0.1.jar` и что внутри него есть `META-INF/jarjar/` с библиотеками (`unzip -l custommusic-1.21.1-1.0.1.jar | grep jarjar`). Старые сборки `-all` (1.0.0) не использовать.
+
+**Q: Игра вообще не запускается, в логе `java.lang.module.ResolutionException: Modules custommusic and jorbis export package com.jcraft.jogg`?**
+A: Это jar версии **1.0.0** — в него через Shadow попала копия `com.jcraft.jorbis`, которую Minecraft и так поставляет сам (`org.jcraft:jorbis:0.0.17`). Два JPMS-модуля с одним пакетом → ModLauncher падает до загрузки игры.
+В **1.0.1** сделано так: библиотеки подключаются через **Jar-in-Jar** (вложенные jar в `META-INF/jarjar/`), `com.jcraft.jorbis` в мод не кладётся вообще, а свой OGG-декодер компилируется против той же версии jorbis (`org.jcraft:jorbis:0.0.17`), которую отдаёт игра. Удали старый jar из `mods/` и положи `custommusic-1.21.1-1.0.1.jar`.
 
 **Q: Сборка падает с `Unsupported class file major version` / требует Java 17?**
 A: Нужен JDK **21**. Проверь `java -version` и `JAVA_HOME`.

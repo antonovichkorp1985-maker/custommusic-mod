@@ -3,7 +3,7 @@
 ## Для игрока
 
 1. Установи **Minecraft 1.21.1** и **NeoForge 21.1.x** (через NeoForge-инсталлер или лаунчер).
-2. Скачай **`custommusic-1.21.1-1.0.0-all.jar`** (именно `-all`, fat jar).
+2. Скачай **`custommusic-1.21.1-1.0.1.jar`** (именно `-all`, fat jar).
 3. Закинь его в папку `mods/` (например `C:\Users\<ты>\AppData\Roaming\.minecraft\versions\<профиль>\mods\`).
 4. Запусти игру один раз и закрой.
 5. В корне игры появится папка `custommusic/`.
@@ -17,7 +17,7 @@
    ```
 7. Запусти игру, нажми **M** (англ. раскладка) — откроется плеер. Если треки не появились сразу, нажми **Обновить**.
 
-> В папке `mods/` не должно быть версии для 1.19.2 Forge (`custommusic-1.0.0-all.jar`) — они несовместимы.
+> В папке `mods/` не должно быть версии для 1.19.2 Forge (`custommusic-1.21.1-1.0.1.jar`) — они несовместимы.
 
 ## Для разработчика (сборка из исходников)
 
@@ -26,23 +26,23 @@
 ```bash
 git clone https://github.com/antonovichkorp1985-maker/custommusic-mod.git
 cd custommusic-mod
-./gradlew shadowJar       # Linux / macOS
-.\gradlew shadowJar       # Windows PowerShell
+./gradlew build       # Linux / macOS
+.\gradlew build       # Windows PowerShell
 ```
 
-Готовый файл: `build/libs/custommusic-1.21.1-1.0.0-all.jar`.
+Готовый файл: `build/libs/custommusic-1.21.1-1.0.1.jar`.
 
 Если сборка упадёт с `OutOfMemoryError` на шаге `createMinecraftArtifacts`:
 
 ```powershell
 # Windows PowerShell
 $env:JAVA_TOOL_OPTIONS="-Xmx3G"
-.\gradlew shadowJar
+.\gradlew build
 ```
 
 ```bash
 # Linux / macOS
-JAVA_TOOL_OPTIONS=-Xmx3G ./gradlew shadowJar
+JAVA_TOOL_OPTIONS=-Xmx3G ./gradlew build
 ```
 
 ## Горячие клавиши

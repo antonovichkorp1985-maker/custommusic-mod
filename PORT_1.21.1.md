@@ -13,7 +13,7 @@
 | Версия загрузчика | `forge:1.19.2-43.4.0` | `neoforge:21.1.176` |
 | Метаданные мода | `META-INF/mods.toml` | `META-INF/neoforge.mods.toml` (генерируется из `src/main/templates`) |
 | Реобфускация | `reobfJar` обязательна | не нужна (NeoForge работает на официальных маппингах Mojang) |
-| Итоговый jar | `custommusic-1.0.0-all.jar` | `custommusic-1.21.1-1.0.0-all.jar` |
+| Итоговый jar | `custommusic-1.0.0-all.jar` | `custommusic-1.21.1-1.0.1-all.jar` |
 | Shadow | `com.github.johnrengelman.shadow` 8.1.1 | `com.gradleup.shadow` 8.3.9 |
 
 `pack.mcmeta`: `pack_format` 9 → **34** (resource pack 1.21.1), data pack 48.
@@ -138,7 +138,58 @@ example.ogg   -> decoded PCM: 21537304 bytes (~122.09 s), RMS=10740   OK
 Тот же патч применён к проекту для 1.19.2 Forge (`custommusic-mod-musicbee`), его нужно
 пересобрать: `.\gradlew shadowJar`.
 
-## 8. Баг, который поймался только запуском: CLIENT-конфиг на сервере
+## 8. Критично: нельзя бандлить `com.jcraft.jorbis` (краш запуска игры)
+
+Первая собранная версия **не запускалась** в реальном клиенте:
+
+```
+[ERROR] [ModuleLayerHandler/]: Error while resolving modules.
+java.lang.module.ResolutionException:
+    Modules custommusic and jorbis export package com.jcraft.jogg to module iris
+```
+
+Причина: Minecraft сам поставляет библиотеку `org.jcraft:jorbis:0.0.17`
+(она нужна ванильному звуковому движку для .ogg). Наш fat jar через Shadow тащил
+`com.googlecode.soundlibs:jorbis:0.0.17.4` — это те же пакеты `com.jcraft.jogg` и
+`com.jcraft.jorbis`. ModLauncher/BootstrapLauncher строит из jar'ов JPMS-модули,
+а два модуля не могут экспортировать один и тот же пакет → игра не стартует вообще.
+(В 1.19.2 с этим же набором библиотек проходило, потому что там не было Iris,
+который эти пакеты импортирует, — т.е. баг был всегда, просто не выстреливал.)
+
+Как исправлено в `build.gradle`:
+
+```groovy
+dependencies {
+    // jorbis больше НЕ в списке бандлируемых библиотек
+    compileOnly 'org.jcraft:jorbis:0.0.17'   // та же версия, что отдаёт Minecraft
+}
+
+tasks.named('shadowJar', ...) {
+    exclude 'com/jcraft/**'   // пакет уже есть в Minecraft
+    exclude 'junit/**'        // тянулся из старых soundlibs, в рантайме не нужен
+    exclude 'org/slf4j/**'    // уже было
+    exclude 'org/apache/commons/io/**'  // уже было
+}
+```
+
+Ключевой момент — `compileOnly` именно на **`org.jcraft:jorbis:0.0.17`** (версия Minecraft),
+а не на форк `com.googlecode.soundlibs:jorbis:0.0.17.4`. Тогда `OggVorbisDecoder`
+компилируется ровно против тех классов, которые будут в рантайме, и не словит
+`NoSuchMethodError`. API совпадает: `Info.synthesis_headerin(Comment, Packet)`,
+`DspState.synthesis_init/synthesis_blockin/synthesis_pcmout/synthesis_read`,
+`Block.synthesis(Packet)`, `SyncState.buffer/wrote/pageout`.
+
+Общее правило для NeoForge/Forge: **никогда не шейдить то, что уже есть в Minecraft**
+(jorbis, guava, gson, commons-io, commons-lang3, log4j, slf4j, netty, fastutil, lwjgl, icu4j, jna, oshi).
+
+### Проверка состава jar
+
+```bash
+jar tf build/libs/custommusic-*-all.jar | grep -E "^com/jcraft|^junit|^org/slf4j|^org/apache/commons/io"
+# должно быть пусто
+```
+
+## 9. Баг, который поймался только запуском: CLIENT-конфиг на сервере
 
 После компиляции мод был проверен реальным запуском выделенного сервера 1.21.1
 (`./gradlew runServer`, headless). Первая попытка — краш загрузки:
@@ -181,12 +232,12 @@ java.lang.IllegalStateException: Cannot get config value before config is loaded
 > В проекте для 1.19.2 (`custommusic-mod-musicbee`) этот фикс НЕ применялся — там перенесён
 > только декодер OGG. Если нужен и сервер-сейф конфиг для 1.19.2 — скажи, перенесу.
 
-## 9. Как собрать
+## 10. Как собрать
 
 ```bash
 # нужен JDK 21
 ./gradlew shadowJar
-# -> build/libs/custommusic-1.21.1-1.0.0-all.jar
+# -> build/libs/custommusic-1.21.1-1.0.1-all.jar
 ```
 
 Если `createMinecraftArtifacts` падает с `OutOfMemoryError` (NeoForge декомпилирует

@@ -334,30 +334,24 @@ public class AudioPlayerManager {
         }
     }
 
+    /** Индекс выбранной FLAC-SPI из последней openAudioStream() (-1 если не FLAC). */
+    private volatile int lastFlacProvider = -1;
+
     /**
-     * Открывает аудио-файл.
-     *
-     * <p>Для .ogg используется собственный декодер ({@link OggVorbisDecoder}): библиотека
-     * javazoom vorbisspi (2012 год) на Java 17/21 определяет формат, но отдаёт поток,
-     * из которого читается 0 байт - трек молча "не играет".
+     * Открывает аудио-файл. Выбор SPI детерминированный - см. {@link AudioSpiSelector}:
+     * OGG декодируется своим {@link OggVorbisDecoder}, FLAC открывается той же библиотекой,
+     * которой потом будет конвертироваться.
      */
     private AudioInputStream openAudioStream(File file) throws Exception {
-        if (OggVorbisDecoder.isOgg(file)) {
-            try {
-                AudioInputStream pcm = OggVorbisDecoder.open(file);
-                CustomMusicMod.LOGGER.info("OGG Vorbis: встроенный декодер, формат {}", pcm.getFormat());
-                return pcm;
-            } catch (Throwable t) {
-                CustomMusicMod.LOGGER.warn("Встроенный OGG-декодер не справился ({}), пробуем SPI", t.toString());
-            }
-        }
-        return AudioSystem.getAudioInputStream(file);
+        AudioSpiSelector.Opened opened = AudioSpiSelector.open(file);
+        lastFlacProvider = opened.flacProvider;
+        CustomMusicMod.LOGGER.info("Открыт {} через {} -> {}", file.getName(), opened.openedBy, opened.stream.getFormat());
+        return opened.stream;
     }
 
-    /** Конвертирует поток в целевой PCM-формат; если форматы уже совпадают - конвертация не нужна. */
+    /** Конвертирует поток в целевой PCM-формат (парой reader+converter из одной библиотеки). */
     private AudioInputStream toPcm(AudioInputStream in, AudioFormat target) throws Exception {
-        if (in.getFormat().matches(target)) return in;
-        return AudioSystem.getAudioInputStream(target, in);
+        return AudioSpiSelector.toPcm(in, target, lastFlacProvider);
     }
     private List<AudioFormat> buildTargetCandidates(AudioFormat baseFormat) {
         int channels = baseFormat.getChannels() > 0 ? baseFormat.getChannels() : 2;

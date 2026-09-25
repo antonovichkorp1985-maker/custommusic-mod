@@ -19,14 +19,14 @@
    `createMinecraftArtifacts` там проходит без танцев с памятью.
 
 3. **Releases → Create a new release**
-   - Choose a tag: `v1.21.1-1.0.0` → **Create new tag on publish**
+   - Choose a tag: `v1.21.1-1.0.1` → **Create new tag on publish**
    - Release title: `CustomMusic 1.0.0 for Minecraft 1.21.1 (NeoForge)`
    - Описание:
      ```
      MusicBee-style local music player for Minecraft 1.21.1 + NeoForge 21.1.x.
      Supports MP3, WAV, FLAC (incl. 96/24), OGG. Requires Java 21.
      ```
-   - **Attach binaries**: `build/libs/custommusic-1.21.1-1.0.0-all.jar`
+   - **Attach binaries**: `build/libs/custommusic-1.21.1-1.0.1.jar`
      (или скачанный из Actions артефакт)
    - Отметь **Set as the latest release** → **Publish release**
 
@@ -42,7 +42,7 @@
 3. **Upload version**:
    - Game version: `1.21.1`
    - Loader: **NeoForge**
-   - File: `custommusic-1.21.1-1.0.0-all.jar`
+   - File: `custommusic-1.21.1-1.0.1.jar`
    - Version number: `1.21.1-1.0.0`
    - Channel: `release`
 4. Добавь скриншоты GUI (открой плеер клавишей `M` и сделай скриншоты).
@@ -57,7 +57,7 @@
 4. Upload file:
    - Game versions: `1.21.1`
    - Мод-лоадер: **NeoForge**
-   - File: `custommusic-1.21.1-1.0.0-all.jar`
+   - File: `custommusic-1.21.1-1.0.1.jar`
    - Release type: `Release`
 5. Дождись модерации (обычно несколько часов/дней).
 

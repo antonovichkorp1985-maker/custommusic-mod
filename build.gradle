@@ -1,9 +1,6 @@
 plugins {
-    id 'idea'
     id 'java-library'
-    id 'maven-publish'
-    id 'net.neoforged.moddev' version '2.0.91'
-    id 'com.gradleup.shadow' version '8.3.9'
+    id 'net.neoforged.moddev' version '2.0.147'
 }
 
 version = "${minecraft_version}-${mod_version}"
@@ -13,7 +10,7 @@ base {
     archivesName = mod_id
 }
 
-// Mojang ships Java 21 to end users starting in 1.20.5, so mods should target Java 21.
+// Minecraft 1.21.1 + NeoForge требуют Java 21
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
@@ -28,17 +25,16 @@ neoForge {
     runs {
         client {
             client()
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            gameDirectory = project.file('run')
         }
 
         server {
             server()
+            gameDirectory = project.file('run')
             programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         configureEach {
-            systemProperty 'forge.logging.markers', 'REGISTRIES'
             logLevel = org.slf4j.event.Level.DEBUG
         }
     }
@@ -50,41 +46,142 @@ neoForge {
     }
 }
 
-sourceSets.main.resources { srcDir 'src/generated/resources' }
-
-// ---------------------------------------------------------------------------
-// Audio decoding libraries. They are NOT part of Minecraft/NeoForge, so they
-// have to be bundled into the released jar (see the shadowJar task below).
-// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// Аудио-библиотеки подключаются через Jar-in-Jar (META-INF/jarjar), а НЕ шейдятся в fat jar.
+//
+// Почему: NeoForge 1.20.2+ резолвит моды через JPMS. Если вшить в мод пакет, который уже
+// есть в Minecraft (com.jcraft.jogg / com.jcraft.jorbis из org.jcraft:jorbis:0.0.17,
+// org.slf4j, org.apache.commons.io, guava, gson, log4j, netty, fastutil, lwjgl...),
+// получается два модуля с одним пакетом и игра падает ещё до загрузки:
+//   java.lang.module.ResolutionException: Modules custommusic and jorbis export package com.jcraft.jogg
+// JarJar грузит каждую библиотеку отдельным вложенным jar'ом - пересечения пакетов нет,
+// а META-INF/services внутри каждого вложенного jar'а остаётся видимым для ServiceLoader
+// (Java Sound SPI находит MP3/FLAC декодеры).
+// ---------------------------------------------------------------------------------------
+// jse-api и jse-spi-flac содержат ОДИН пакет io.github.jseproject в разных jar'ах.
+// Для JPMS это "split package": два модуля экспортируют один пакет -> игра не стартует:
+//   ResolutionException: Modules jse.api and jse.spi.flac export package io.github.jseproject
+// Поэтому склеиваем их в один jar (классы не пересекаются) и объединяем META-INF/services.
+// ---------------------------------------------------------------------------------------
 configurations {
-    audioSpi
-}
-
-dependencies {
-    def audioDeps = [
-            // MP3 (SPI)
-            'com.googlecode.soundlibs:mp3spi:1.9.5.4',
-            'com.googlecode.soundlibs:jlayer:1.0.1.4',
-            'com.googlecode.soundlibs:tritonus-share:0.3.7.4',
-            // OGG Vorbis
-            'com.googlecode.soundlibs:jorbis:0.0.17.4',
-            'com.googlecode.soundlibs:vorbisspi:1.0.3.3',
-            'org.gagravarr:vorbis-java-core:0.8',
-            // FLAC
-            'org.jflac:jflac-codec:1.5.2',
-            'io.github.jseproject:jse-spi-flac:1.1.0',
-            'io.github.jseproject:jse-api:1.1.0',
-            // Metadata (tags)
-            'net.jthink:jaudiotagger:3.0.1'
-    ]
-
-    audioDeps.each { dep ->
-        implementation dep
-        audioSpi dep
+    jseMerge {
+        // ВАЖНО: без транзитивных зависимостей. Иначе внутрь склеенного jar попадает
+        // vorbis-java-core, который отдельно лежит рядом -> снова split package
+        // (Modules io.github.jseproject.merged and vorbis.java.core export package org.gagravarr.theora).
+        transitive = false
     }
 }
 
-// Expands ${...} properties in neoforge.mods.toml / pack.mcmeta
+dependencies {
+    jseMerge 'io.github.jseproject:jse-api:1.1.0'
+    jseMerge 'io.github.jseproject:jse-spi-flac:1.1.0'
+}
+
+def mergedServicesDir = layout.buildDirectory.dir('generated/jse-services')
+
+tasks.register('mergeJseServices') {
+    inputs.files configurations.jseMerge
+    outputs.dir mergedServicesDir
+    doLast {
+        def outDir = mergedServicesDir.get().asFile
+        outDir.deleteDir()
+        def services = new LinkedHashMap<String, StringBuilder>()
+        configurations.jseMerge.files.sort { it.name }.each { jarFile ->
+            def zf = new java.util.zip.ZipFile(jarFile)
+            try {
+                zf.entries().each { e ->
+                    if (!e.isDirectory() && e.name.startsWith('META-INF/services/')
+                            && e.name.length() > 'META-INF/services/'.length()) {
+                        def text = zf.getInputStream(e).getText('UTF-8').trim()
+                        if (!text.isEmpty()) {
+                            services.computeIfAbsent(e.name, { k -> new StringBuilder() }).append(text).append('\n')
+                        }
+                    }
+                }
+            } finally {
+                zf.close()
+            }
+        }
+        services.each { name, sb ->
+            def f = new File(outDir, name)
+            f.parentFile.mkdirs()
+            f.setText(sb.toString().trim() + '\n', 'UTF-8')
+            println "  merged service: ${name} -> ${sb.toString().trim().split('\n').length} provider(s)"
+        }
+    }
+}
+
+tasks.register('mergeJseLibs', Jar) {
+    dependsOn tasks.named('mergeJseServices')
+    archiveBaseName = 'jse-flac'
+    archiveVersion = '1.1.0'
+    archiveClassifier = 'merged'
+    destinationDirectory = layout.buildDirectory.dir('merged-libs')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    // JarJar требует явное имя Java-модуля для локальных jar'ов
+    manifest {
+        attributes(['Automatic-Module-Name': 'io.github.jseproject.merged'])
+    }
+    from { configurations.jseMerge.collect { zipTree(it) } }
+    exclude 'META-INF/services/**'
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    exclude 'module-info.class'
+    from(mergedServicesDir)
+}
+
+// ---------------------------------------------------------------------------------------
+configurations.jarJar {
+    // junit тянется как compile-зависимость из старых soundlibs - в игре не нужен
+    exclude group: 'junit', module: 'junit'
+    // jorbis отдаёт сам Minecraft (org.jcraft:jorbis:0.0.17) - дубль ломает JPMS
+    exclude group: 'com.jcraft', module: 'jorbis'
+    exclude group: 'com.googlecode.soundlibs', module: 'jorbis'
+    // vorbisspi (javazoom) не нужен: OGG декодируется своим OggVorbisDecoder поверх
+    // ванильного jorbis из Minecraft. Плюс эта SPI на Java 17/21 отдаёт пустой поток.
+    exclude group: 'com.googlecode.soundlibs', module: 'vorbisspi'
+}
+
+dependencies {
+    // MP3 (Java Sound SPI + декодер JLayer)
+    jarJar(implementation('com.googlecode.soundlibs:mp3spi:1.9.5.4')) {
+        version { strictly '[1.9.5,2.0)'; prefer '1.9.5.4' }
+    }
+    jarJar(implementation('com.googlecode.soundlibs:jlayer:1.0.1.4')) {
+        version { strictly '[1.0.1,2.0)'; prefer '1.0.1.4' }
+    }
+    jarJar(implementation('com.googlecode.soundlibs:tritonus-share:0.3.7.4')) {
+        version { strictly '[0.3.7,1.0)'; prefer '0.3.7.4' }
+    }
+
+    // FLAC (две SPI: jflac и jse-spi-flac; jse умеет ресэмплинг 44.1 -> 48 кГц, jflac - нет).
+    // jse-api + jse-spi-flac кладутся ОДНИМ склеенным jar'ом - см. задачу mergeJseLibs.
+    jarJar(implementation('org.jflac:jflac-codec:1.5.2')) {
+        version { strictly '[1.5,2.0)'; prefer '1.5.2' }
+    }
+    jarJar files(tasks.named('mergeJseLibs', Jar))
+
+    // jse-spi-flac требует org.gagravarr.flac.FlacFile из vorbis-java-core.
+    // Это НЕ OGG-стек: без него FLAC-SPI от jse падает с NoClassDefFoundError,
+    // а именно она умеет ресэмплинг (44.1 -> 48 кГц), которого нет в jflac.
+    jarJar(implementation('org.gagravarr:vorbis-java-core:0.8')) {
+        version { strictly '[0.8,1.0)'; prefer '0.8' }
+    }
+
+    // Теги (ID3v1/v2, FLAC, Vorbis comments)
+    jarJar(implementation('net.jthink:jaudiotagger:3.0.1')) {
+        version { strictly '[3.0,4.0)'; prefer '3.0.1' }
+    }
+
+    // jorbis для своего OGG-декодера: compileOnly, в рантайме классы даёт Minecraft.
+    // Версия ровно та, что лежит в клиенте 1.21.1 (org.jcraft:jorbis:0.0.17).
+    compileOnly 'org.jcraft:jorbis:0.0.17'
+}
+
+// Подстановка ${...} в neoforge.mods.toml
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
             minecraft_version      : minecraft_version,
@@ -108,28 +205,6 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
 sourceSets.main.resources.srcDir generateModMetadata
 neoForge.ideSyncTask generateModMetadata
 
-// ---------------------------------------------------------------------------
-// Fat jar with the audio libraries bundled in: build/libs/<name>-all.jar
-// THIS is the file you put in your mods folder / upload to a release.
-// ---------------------------------------------------------------------------
-tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).configure {
-    archiveClassifier = 'all'
-    configurations = [project.configurations.audioSpi]
-
-    exclude 'org/apache/commons/io/**'
-    exclude 'org/slf4j/**'
-    exclude 'META-INF/*.SF'
-    exclude 'META-INF/*.DSA'
-    exclude 'META-INF/*.RSA'
-    exclude 'module-info.class'
-
-    mergeServiceFiles()
-}
-
-tasks.named('assemble') {
-    dependsOn tasks.named('shadowJar')
-}
-
 tasks.named('jar', Jar).configure {
     manifest {
         attributes([
@@ -144,26 +219,80 @@ tasks.named('jar', Jar).configure {
     }
 }
 
-publishing {
-    publications {
-        register('mavenJava', MavenPublication) {
-            from components.java
+// Защита от регрессии: в jar не должно быть классов, которые уже поставляет Minecraft.
+tasks.register('checkNoMinecraftDuplicates') {
+    dependsOn tasks.named('jar')
+    doLast {
+        def prefixes = ['com/jcraft/', 'junit/', 'org/slf4j/', 'org/apache/commons/io/',
+                        'com/google/common/', 'com/google/gson/', 'io/netty/', 'org/apache/logging/',
+                        'com/mojang/', 'net/minecraft/', 'org/lwjgl/', 'it/unimi/dsi/']
+        def bad = []
+        def jarFile = tasks.named('jar', Jar).get().archiveFile.get().asFile
+        new java.util.zip.ZipFile(jarFile).withCloseable { z ->
+            z.entries().each { e ->
+                if (e.name.endsWith('.class') && prefixes.any { e.name.startsWith(it) }) {
+                    bad << e.name
+                }
+            }
         }
-    }
-    repositories {
-        maven {
-            url "file://${project.projectDir}/repo"
+        if (!bad.isEmpty()) {
+            throw new GradleException("В jar попали классы, которые уже есть в Minecraft (JPMS split package -> ResolutionException):\n" + bad.take(20).join('\n'))
         }
+        println "OK: в jar нет дубликатов библиотек Minecraft"
     }
 }
+tasks.named('build') { dependsOn tasks.named('checkNoMinecraftDuplicates') }
+
+// Автопроверка: вложенные JarJar библиотеки не должны иметь общих пакетов.
+// Иначе JPMS в NeoForge убьёт запуск игры: "Modules X and Y export package Z".
+tasks.register('checkNoSplitPackages') {
+    dependsOn tasks.named('jar')
+    doLast {
+        def jarFile = tasks.named('jar', Jar).get().archiveFile.get().asFile
+        def nested = [:]
+        def zf = new java.util.zip.ZipFile(jarFile)
+        try {
+            zf.entries().each { e ->
+                if (e.name.startsWith('META-INF/jarjar/') && e.name.endsWith('.jar')) {
+                    def tmp = File.createTempFile('nested', '.jar')
+                    tmp.bytes = zf.getInputStream(e).bytes
+                    def pkgs = new HashSet<String>()
+                    def nzf = new java.util.zip.ZipFile(tmp)
+                    try {
+                        nzf.entries().each { ne ->
+                            if (ne.name.endsWith('.class') && ne.name.contains('/')) {
+                                pkgs.add(ne.name.substring(0, ne.name.lastIndexOf('/')))
+                            }
+                        }
+                    } finally {
+                        nzf.close()
+                    }
+                    nested[e.name] = pkgs
+                    tmp.delete()
+                }
+            }
+        } finally {
+            zf.close()
+        }
+        def problems = []
+        def names = nested.keySet().toList()
+        for (int i = 0; i < names.size(); i++) {
+            for (int j = i + 1; j < names.size(); j++) {
+                def common = nested[names[i]].intersect(nested[names[j]])
+                if (common) {
+                    problems << "  ${names[i]}  <->  ${names[j]}: ${common.take(5)}"
+                }
+            }
+        }
+        if (!problems.isEmpty()) {
+            throw new GradleException("Split package во вложенных JarJar (JPMS не даст игре запуститься):\n" + problems.join('\n'))
+        }
+        println "OK: во вложенных JarJar (${nested.size()} шт.) нет общих пакетов"
+    }
+}
+tasks.named('build') { dependsOn tasks.named('checkNoSplitPackages') }
+
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-}
-
-idea {
-    module {
-        downloadSources = true
-        downloadJavadoc = true
-    }
 }

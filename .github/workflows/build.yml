@@ -25,12 +25,30 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build fat jar
-        run: chmod +x ./gradlew && ./gradlew shadowJar --no-daemon
+      - name: Build
+        run: chmod +x ./gradlew && ./gradlew build --no-daemon
 
-      - name: Upload fat jar
+      - name: Check jar contents
+        run: |
+          set -e
+          JAR=$(ls build/libs/*.jar | grep -v -- '-sources' | head -1)
+          echo "Проверяем: $JAR"
+          echo "--- вложенные JarJar библиотеки ---"
+          unzip -Z1 "$JAR" | grep '^META-INF/jarjar/' || true
+          echo "--- классы, которые уже поставляет Minecraft (их быть не должно) ---"
+          if unzip -Z1 "$JAR" | grep -E '^(com/jcraft/|junit/|org/slf4j/|org/apache/commons/io/|com/google/common/|io/netty/|org/lwjgl/)'; then
+            echo "::error::В jar попали дубликаты библиотек Minecraft -> JPMS ResolutionException при запуске игры"
+            exit 1
+          fi
+          if [ -z "$(unzip -Z1 "$JAR" | grep -E '^META-INF/jarjar/.+\.jar$')" ]; then
+            echo "::error::В jar нет вложенных библиотек (META-INF/jarjar) - MP3/FLAC не будут работать"
+            exit 1
+          fi
+          echo "OK"
+
+      - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
           name: custommusic-1.21.1-neoforge
-          path: build/libs/*-all.jar
+          path: build/libs/*.jar
           if-no-files-found: error
